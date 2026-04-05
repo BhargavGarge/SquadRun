@@ -26,36 +26,16 @@ import ActivityFeedItem from "../../components/squad/ActivityFeedItem";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useAuthContext } from "../../contexts/AuthContext";
 import { useSquadStore } from "../../contexts/SquadContext";
-import { usersApi } from "../../services/supabase";
+import { usersApi, storageApi } from "../../services/supabase";
 import { textStyles } from "../../theme/typography";
 import { spacing, radius } from "../../theme/spacing";
 
-// Sample badges for display
+// Achievement definitions — badgeKey maps to SVG geometric icon in Badge component
 const SAMPLE_BADGES = [
-  {
-    icon: "🏃",
-    name: "First Run",
-    description: "Logged your first run",
-    earned: true,
-  },
-  {
-    icon: "🔥",
-    name: "7-Day Streak",
-    description: "7 consecutive active days",
-    earned: true,
-  },
-  {
-    icon: "💯",
-    name: "100km Club",
-    description: "Ran 100km total",
-    earned: false,
-  },
-  {
-    icon: "🏆",
-    name: "Goal Crusher",
-    description: "Completed a squad goal",
-    earned: false,
-  },
+  { badgeKey: "first_run",    name: "First Run",    earned: true  },
+  { badgeKey: "streak_7",     name: "7-Day Streak", earned: true  },
+  { badgeKey: "distance_100", name: "100km Club",   earned: false },
+  { badgeKey: "goal_crusher", name: "Goal Crusher", earned: false },
 ];
 
 export default function ProfileScreen() {
@@ -88,8 +68,12 @@ export default function ProfileScreen() {
     if (!result.canceled && result.assets[0] && dbUser) {
       setUploading(true);
       try {
-        const uri = result.assets[0].uri;
-        await usersApi.update(dbUser.id, { avatar_url: uri });
+        const localUri = result.assets[0].uri;
+        // Upload to Supabase storage and get a permanent public URL.
+        // Use clerk_id as folder path — storage RLS checks auth.uid() which
+        // returns the Clerk user sub, not the Supabase DB row UUID.
+        const publicUrl = await storageApi.uploadAvatar(dbUser.clerk_id, localUri);
+        await usersApi.update(dbUser.id, { avatar_url: publicUrl });
         await refreshUser();
       } catch (err: any) {
         console.error("[Profile] avatar upload:", err);
@@ -247,21 +231,19 @@ export default function ProfileScreen() {
             >
               Badges
             </Text>
-            <GlassCard padding={spacing[4]}>
-              <View style={styles.badgesGrid}>
-                {SAMPLE_BADGES.map((badge, i) => (
-                  <Badge
-                    key={badge.name}
-                    icon={badge.icon}
-                    name={badge.name}
-                    description={badge.description}
-                    earned={badge.earned}
-                    size="md"
-                    animationDelay={i * 100}
-                  />
-                ))}
-              </View>
-            </GlassCard>
+            {/* Tactical badge grid — 2-column, geometric icons, scan-line animation */}
+            <View style={styles.badgesGrid}>
+              {SAMPLE_BADGES.map((badge, i) => (
+                <Badge
+                  key={badge.name}
+                  badgeKey={badge.badgeKey as any}
+                  name={badge.name}
+                  earned={badge.earned}
+                  size="md"
+                  animationDelay={i * 120}
+                />
+              ))}
+            </View>
           </View>
 
           {/* Bio */}
@@ -355,7 +337,7 @@ const styles = StyleSheet.create({
   settingsBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 0,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "flex-end",
@@ -370,7 +352,7 @@ const styles = StyleSheet.create({
     right: 2,
     width: 24,
     height: 24,
-    borderRadius: 12,
+    borderRadius: 0,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -378,7 +360,7 @@ const styles = StyleSheet.create({
     marginTop: spacing[2],
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[1],
-    borderRadius: radius.full,
+    borderRadius: 0,  // ROUND_NONE
     borderWidth: 1,
   },
   statsRow: {
@@ -401,7 +383,7 @@ const styles = StyleSheet.create({
   badgesGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: spacing[5],
-    justifyContent: "space-around",
+    gap: spacing[2],
+    justifyContent: "space-between",
   },
 });

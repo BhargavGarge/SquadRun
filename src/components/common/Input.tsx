@@ -100,17 +100,17 @@ export default function Input({
             {
               backgroundColor: theme.colors.surface_container,
               borderColor,
-              borderRadius: radius.lg,
+              borderRadius: 0,  // ROUND_NONE — tactical sharp corners
             },
           ]}
         >
-          {/* Focus ring overlay */}
+          {/* Focus border flash — lime on focus (over-the-shoulder activation) */}
           <Animated.View
             style={[
               StyleSheet.absoluteFill,
               focusBorderStyle,
               {
-                borderRadius: radius.lg,
+                borderRadius: 0,
                 borderWidth: 1.5,
                 borderColor: hasError ? theme.colors.error : theme.colors.primary,
               },
@@ -132,7 +132,7 @@ export default function Input({
               styles.input,
               {
                 color: theme.colors.on_surface,
-                fontFamily: 'Manrope_400Regular',
+                fontFamily: 'Manrope-Regular',
                 fontSize: 15,
                 paddingLeft: leftIcon ? 0 : 16,
                 paddingRight: rightIcon || isPassword ? 0 : 16,

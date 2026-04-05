@@ -1,59 +1,62 @@
 // ─────────────────────────────────────────────────────────────
-// Typography scale
-// Lexend  → display headlines (bold, expressive)
-// Manrope → body, labels, UI text (clean, readable)
+// Typography — Tactical Command system
+// Lexend  → display / headlines (architectural density)
+// Manrope → body, labels, UI text (blueprint precision)
+//
+// Display/Headline: -0.05em letter-spacing = maximum "Technical Noir" density.
+// Labels: UPPERCASE + +0.1em tracking = engineering schematic annotations.
+// Body: spacious, variant color for secondary hierarchy.
+// Font sizes increased ~2px from previous system for tactical readability.
 // ─────────────────────────────────────────────────────────────
 
 export const fontFamily = {
-  // Lexend family
   lexend: {
-    light: 'Lexend-Light',
-    regular: 'Lexend-Regular',
-    medium: 'Lexend-Medium',
-    semiBold: 'Lexend-SemiBold',
-    bold: 'Lexend-Bold',
+    light:     'Lexend-Light',
+    regular:   'Lexend-Regular',
+    medium:    'Lexend-Medium',
+    semiBold:  'Lexend-SemiBold',
+    bold:      'Lexend-Bold',
     extraBold: 'Lexend-ExtraBold',
   },
-  // Manrope family
   manrope: {
-    light: 'Manrope-Light',
-    regular: 'Manrope-Regular',
-    medium: 'Manrope-Medium',
-    semiBold: 'Manrope-SemiBold',
-    bold: 'Manrope-Bold',
+    light:     'Manrope-Light',
+    regular:   'Manrope-Regular',
+    medium:    'Manrope-Medium',
+    semiBold:  'Manrope-SemiBold',
+    bold:      'Manrope-Bold',
     extraBold: 'Manrope-ExtraBold',
   },
 };
 
-// Type scale — maps semantic names to size/line-height pairs
+// Type scale — dense headlines, spacious body.
+// -0.05em on display/headline = ~1px/20px density push.
 export const typeScale = {
-  // Display (Lexend) — large hero text
-  displayLg: { fontSize: 48, lineHeight: 56, letterSpacing: -1.5 },
-  displayMd: { fontSize: 36, lineHeight: 44, letterSpacing: -1.0 },
-  displaySm: { fontSize: 28, lineHeight: 36, letterSpacing: -0.5 },
+  // Display — "Sledgehammer" sizes
+  displayLg: { fontSize: 52, lineHeight: 54, letterSpacing: -2.60 }, // -0.05em
+  displayMd: { fontSize: 40, lineHeight: 42, letterSpacing: -2.00 }, // -0.05em
+  displaySm: { fontSize: 32, lineHeight: 34, letterSpacing: -1.60 }, // -0.05em
 
-  // Headline (Lexend)
-  headlineLg: { fontSize: 24, lineHeight: 32, letterSpacing: -0.3 },
-  headlineMd: { fontSize: 20, lineHeight: 28, letterSpacing: -0.2 },
-  headlineSm: { fontSize: 18, lineHeight: 26, letterSpacing: -0.1 },
+  // Headline — tactical forward-lean
+  headlineLg: { fontSize: 28, lineHeight: 30, letterSpacing: -1.40 }, // -0.05em
+  headlineMd: { fontSize: 24, lineHeight: 26, letterSpacing: -1.20 }, // -0.05em
+  headlineSm: { fontSize: 20, lineHeight: 22, letterSpacing: -1.00 }, // -0.05em
 
-  // Title (Manrope semibold)
-  titleLg: { fontSize: 16, lineHeight: 24, letterSpacing: 0 },
-  titleMd: { fontSize: 14, lineHeight: 22, letterSpacing: 0.1 },
-  titleSm: { fontSize: 13, lineHeight: 20, letterSpacing: 0.1 },
+  // Title — supporting hierarchy
+  titleLg: { fontSize: 18, lineHeight: 26, letterSpacing: -0.36 },
+  titleMd: { fontSize: 16, lineHeight: 24, letterSpacing: -0.32 },
+  titleSm: { fontSize: 15, lineHeight: 22, letterSpacing: -0.30 },
 
-  // Body (Manrope regular)
-  bodyLg: { fontSize: 16, lineHeight: 26, letterSpacing: 0.1 },
-  bodyMd: { fontSize: 14, lineHeight: 22, letterSpacing: 0.1 },
-  bodySm: { fontSize: 12, lineHeight: 18, letterSpacing: 0.2 },
+  // Body — legible, spacious
+  bodyLg: { fontSize: 18, lineHeight: 30, letterSpacing: 0.1 },
+  bodyMd: { fontSize: 16, lineHeight: 26, letterSpacing: 0.1 },
+  bodySm: { fontSize: 14, lineHeight: 22, letterSpacing: 0.2 },
 
-  // Label (Manrope, all-caps for section headers)
-  labelLg: { fontSize: 13, lineHeight: 18, letterSpacing: 0.8 },
-  labelMd: { fontSize: 11, lineHeight: 16, letterSpacing: 1.0 },
-  labelSm: { fontSize: 10, lineHeight: 14, letterSpacing: 1.2 },
+  // Label — "TACTICAL METADATA" — uppercase + +0.1em
+  labelLg: { fontSize: 14, lineHeight: 18, letterSpacing: 1.40 }, // +0.1em
+  labelMd: { fontSize: 12, lineHeight: 16, letterSpacing: 1.20 }, // +0.1em
+  labelSm: { fontSize: 11, lineHeight: 14, letterSpacing: 1.10 }, // +0.1em
 };
 
-// Convenience text styles with font families baked in
 export const textStyles = {
   displayLg: {
     ...typeScale.displayLg,
@@ -61,7 +64,7 @@ export const textStyles = {
   },
   displayMd: {
     ...typeScale.displayMd,
-    fontFamily: fontFamily.lexend.bold,
+    fontFamily: fontFamily.lexend.extraBold,
   },
   displaySm: {
     ...typeScale.displaySm,
@@ -69,15 +72,15 @@ export const textStyles = {
   },
   headlineLg: {
     ...typeScale.headlineLg,
-    fontFamily: fontFamily.lexend.semiBold,
+    fontFamily: fontFamily.lexend.bold,
   },
   headlineMd: {
     ...typeScale.headlineMd,
-    fontFamily: fontFamily.lexend.semiBold,
+    fontFamily: fontFamily.lexend.bold,
   },
   headlineSm: {
     ...typeScale.headlineSm,
-    fontFamily: fontFamily.lexend.medium,
+    fontFamily: fontFamily.lexend.semiBold,
   },
   titleLg: {
     ...typeScale.titleLg,

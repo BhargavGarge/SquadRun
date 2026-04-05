@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────
-// WelcomeScreen — Strava-style full-screen landing.
-// Bold athlete headline, animated live stats bar, orange CTA.
+// WelcomeScreen — Tactical Command landing.
+// Full-screen video, electric lime headline accent, sharp CTA.
 // ─────────────────────────────────────────────────────────────
 
 import React, { useEffect, useRef } from "react";
@@ -30,15 +30,12 @@ import { textStyles } from "../../theme/typography";
 import { spacing } from "../../theme/spacing";
 import type { AuthStackParamList } from "../../navigation/types";
 
-// Live community stats shown in the ticker
 const STATS = [
-  { value: "2.4M", label: "Athletes" },
-  { value: "18M", label: "Workouts" },
-  { value: "847K", label: "Squads" },
-  { value: "340M", label: "km Logged" },
+  { value: "2.4M",  label: "Athletes" },
+  { value: "18M",   label: "Workouts" },
+  { value: "847K",  label: "Squads" },
+  { value: "340M+", label: "km Logged" },
 ];
-
-// Sport icons row
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, "Welcome">;
@@ -48,46 +45,31 @@ export default function WelcomeScreen({ navigation }: Props) {
   const { theme } = useTheme();
   const videoRef = useRef<Video>(null);
 
-  const heroOpacity = useSharedValue(0);
-  const heroY = useSharedValue(30);
+  const heroOpacity  = useSharedValue(0);
+  const heroY        = useSharedValue(24);
   const statsOpacity = useSharedValue(0);
-  const ctaOpacity = useSharedValue(0);
-  const ctaY = useSharedValue(24);
-  const logoScale = useSharedValue(0.6);
+  const ctaOpacity   = useSharedValue(0);
+  const ctaY         = useSharedValue(20);
+  const logoScale    = useSharedValue(0.7);
 
   useEffect(() => {
-    logoScale.value = withSpring(1, { damping: 12 });
-    heroOpacity.value = withDelay(150, withTiming(1, { duration: 700 }));
-    heroY.value = withDelay(
-      150,
-      withTiming(0, { duration: 700, easing: Easing.out(Easing.cubic) }),
-    );
-    statsOpacity.value = withDelay(500, withTiming(1, { duration: 600 }));
-    ctaOpacity.value = withDelay(800, withTiming(1, { duration: 500 }));
-    ctaY.value = withDelay(
-      800,
-      withTiming(0, { duration: 500, easing: Easing.out(Easing.cubic) }),
-    );
+    logoScale.value  = withSpring(1, { damping: 14 });
+    heroOpacity.value = withDelay(150, withTiming(1, { duration: 600 }));
+    heroY.value = withDelay(150, withTiming(0, { duration: 600, easing: Easing.out(Easing.cubic) }));
+    statsOpacity.value = withDelay(500, withTiming(1, { duration: 500 }));
+    ctaOpacity.value = withDelay(750, withTiming(1, { duration: 500 }));
+    ctaY.value = withDelay(750, withTiming(0, { duration: 500, easing: Easing.out(Easing.cubic) }));
   }, []);
 
-  const logoStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: logoScale.value }],
-  }));
-  const heroStyle = useAnimatedStyle(() => ({
-    opacity: heroOpacity.value,
-    transform: [{ translateY: heroY.value }],
-  }));
+  const logoStyle  = useAnimatedStyle(() => ({ transform: [{ scale: logoScale.value }] }));
+  const heroStyle  = useAnimatedStyle(() => ({ opacity: heroOpacity.value, transform: [{ translateY: heroY.value }] }));
   const statsStyle = useAnimatedStyle(() => ({ opacity: statsOpacity.value }));
-  const ctaStyle = useAnimatedStyle(() => ({
-    opacity: ctaOpacity.value,
-    transform: [{ translateY: ctaY.value }],
-  }));
+  const ctaStyle   = useAnimatedStyle(() => ({ opacity: ctaOpacity.value, transform: [{ translateY: ctaY.value }] }));
 
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
 
-      {/* Full-screen looping background video */}
       <Video
         ref={videoRef}
         source={require("../../../assets/5310749-uhd_3840_2160_25fps.mp4")}
@@ -98,73 +80,54 @@ export default function WelcomeScreen({ navigation }: Props) {
         isMuted
       />
 
-      {/* Dark scrim so text stays readable */}
+      {/* Dark scrim — deep enough to anchor the lime */}
       <LinearGradient
-        colors={["rgba(0,0,0,0.55)", "rgba(0,0,0,0.72)"]}
+        colors={["rgba(0,0,0,0.62)", "rgba(0,0,0,0.80)"]}
         style={StyleSheet.absoluteFill}
       />
 
       <SafeAreaView style={styles.safe}>
-        {/* ── Logo ──────────────────────────────────────────── */}
+        {/* ── Logo ─────────────────────────────────────────── */}
         <Animated.View style={[styles.logoRow, logoStyle]}>
-          <View
-            style={[styles.logoMark, { backgroundColor: theme.colors.primary }]}
-          >
-            <Text style={styles.logoEmoji}>⚡</Text>
+          {/* ROUND_NONE logomark — sharp square */}
+          <View style={[styles.logoMark, { backgroundColor: theme.colors.primary }]}>
+            <Text style={[styles.logoGlyph, { color: theme.colors.on_primary }]}>SG</Text>
           </View>
-          <Text
-            style={[
-              textStyles.titleLg,
-              { color: theme.colors.on_surface, letterSpacing: 1.5 },
-            ]}
-          >
+          <Text style={[textStyles.labelLg, { color: theme.colors.on_surface, letterSpacing: 2.5 }]}>
             SQUAD GOALS
           </Text>
         </Animated.View>
 
-        {/* ── Sports strip ─────────────────────────────────── */}
-
-        {/* ── Main headline ────────────────────────────────── */}
+        {/* ── Main headline ─────────────────────────────── */}
         <Animated.View style={[styles.heroSection, heroStyle]}>
-          <Text
-            style={[styles.heroHeadline, { color: theme.colors.on_surface }]}
-          >
+          {/* Data-stamp — top tactical metadata */}
+          <Text style={[textStyles.labelMd, { color: theme.colors.primary, marginBottom: spacing[3] }]}>
+            ● PERFORMANCE NETWORK
+          </Text>
+          <Text style={[styles.heroHeadline, { color: theme.colors.on_surface }]}>
             Every PR{"\n"}starts with{"\n"}
             <Text style={{ color: theme.colors.primary }}>your squad.</Text>
           </Text>
-          <Text
-            style={[
-              textStyles.bodyLg,
-              styles.heroSub,
-              { color: theme.colors.on_surface_variant },
-            ]}
-          >
+          <Text style={[textStyles.bodyMd, styles.heroSub, { color: theme.colors.on_surface_variant }]}>
             Track together. Push harder. Go further.
           </Text>
         </Animated.View>
 
-        {/* ── Live stats ticker ────────────────────────────── */}
-        <Animated.View style={[styles.statsRow, statsStyle]}>
+        {/* ── Live stats — tonal surface block, no border lines ── */}
+        <Animated.View style={[styles.statsBlock, { backgroundColor: 'rgba(19,19,19,0.70)' }, statsStyle]}>
           {STATS.map((s, i) => (
             <View key={i} style={styles.statItem}>
-              <Text
-                style={[styles.statValue, { color: theme.colors.on_surface }]}
-              >
+              <Text style={[styles.statValue, { color: theme.colors.on_surface, fontFamily: 'Lexend-Bold' }]}>
                 {s.value}
               </Text>
-              <Text
-                style={[
-                  textStyles.labelSm,
-                  { color: theme.colors.on_surface_variant },
-                ]}
-              >
+              <Text style={[textStyles.labelSm, { color: theme.colors.on_surface_variant }]}>
                 {s.label}
               </Text>
             </View>
           ))}
         </Animated.View>
 
-        {/* ── CTAs ─────────────────────────────────────────── */}
+        {/* ── CTAs ──────────────────────────────────────── */}
         <Animated.View style={[styles.ctas, ctaStyle]}>
           <GradientButton
             label="Get Started"
@@ -176,12 +139,7 @@ export default function WelcomeScreen({ navigation }: Props) {
             onPress={() => navigation.navigate("SignIn")}
             style={styles.signInLink}
           >
-            <Text
-              style={[
-                textStyles.bodyMd,
-                { color: theme.colors.on_surface_variant },
-              ]}
-            >
+            <Text style={[textStyles.bodyMd, { color: theme.colors.on_surface_variant }]}>
               Already have an account?{" "}
               <Text style={{ color: theme.colors.primary }}>Sign in</Text>
             </Text>
@@ -207,22 +165,16 @@ const styles = StyleSheet.create({
     gap: spacing[3],
   },
   logoMark: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 0,   // ROUND_NONE
     alignItems: "center",
     justifyContent: "center",
   },
-  logoEmoji: {
-    fontSize: 20,
-  },
-  sportsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: spacing[4],
-  },
-  sportEmoji: {
-    fontSize: 28,
+  logoGlyph: {
+    fontSize: 13,
+    fontFamily: 'Lexend-ExtraBold',
+    letterSpacing: -0.5,
   },
   heroSection: {
     flex: 1,
@@ -230,29 +182,29 @@ const styles = StyleSheet.create({
   },
   heroHeadline: {
     fontSize: 52,
-    fontFamily: "Lexend_800ExtraBold",
-    lineHeight: 58,
-    letterSpacing: -1,
+    fontFamily: 'Lexend-ExtraBold',  // correct font name
+    lineHeight: 54,
+    letterSpacing: -2.60,            // -0.05em at 52px
   },
   heroSub: {
-    marginTop: spacing[4],
-    lineHeight: 26,
+    marginTop: spacing[5],
   },
-  statsRow: {
+  // Tonal block — no border lines, surface tier creates separation
+  statsBlock: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: spacing[5],
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    paddingVertical: spacing[4],
+    paddingHorizontal: spacing[3],
     marginBottom: spacing[6],
   },
   statItem: {
     alignItems: "center",
+    flex: 1,
   },
   statValue: {
     fontSize: 20,
-    fontFamily: "Lexend_700Bold",
+    lineHeight: 24,
+    letterSpacing: -1.0,
     marginBottom: 2,
   },
   ctas: {

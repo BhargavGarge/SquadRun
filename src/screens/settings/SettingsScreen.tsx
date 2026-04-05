@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
   levelBtn: {
     flex: 1,
     paddingVertical: spacing[2],
-    borderRadius: 10,
+    borderRadius: 0,
     alignItems: 'center',
     borderWidth: 1.5,
   },
@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
   rowIcon: {
     width: 34,
     height: 34,
-    borderRadius: 10,
+    borderRadius: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },

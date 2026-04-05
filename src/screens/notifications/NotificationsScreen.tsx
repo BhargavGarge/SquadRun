@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
   notifIcon: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 0,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
   unreadDot: {
     width: 8,
     height: 8,
-    borderRadius: 4,
+    borderRadius: 0,
     marginTop: spacing[2],
     flexShrink: 0,
   },

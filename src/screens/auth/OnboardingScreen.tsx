@@ -758,13 +758,13 @@ const styles = StyleSheet.create({
   },
   progressTrack: {
     height: 3,
-    borderRadius: 2,
+    borderRadius: 0,
     overflow: "hidden",
     marginTop: spacing[3],
   },
   progressFill: {
     height: 3,
-    borderRadius: 2,
+    borderRadius: 0,
   },
   navRow: {
     flexDirection: "row",
@@ -779,7 +779,7 @@ const styles = StyleSheet.create({
   },
   stepCount: {
     fontSize: 13,
-    fontFamily: "Manrope_500Medium",
+    fontFamily: "Manrope-Medium",
     letterSpacing: 0.5,
   },
 
@@ -790,14 +790,14 @@ const styles = StyleSheet.create({
   },
   heading: {
     fontSize: 38,
-    fontFamily: "Lexend_800ExtraBold",
+    fontFamily: "Lexend-ExtraBold",
     lineHeight: 44,
     letterSpacing: -0.5,
     marginBottom: spacing[3],
   },
   subText: {
     fontSize: 15,
-    fontFamily: "Manrope_400Regular",
+    fontFamily: "Manrope-Regular",
     lineHeight: 23,
     marginBottom: spacing[8],
   },
@@ -808,7 +808,7 @@ const styles = StyleSheet.create({
   skipText: {
     textAlign: "center",
     fontSize: 14,
-    fontFamily: "Manrope_500Medium",
+    fontFamily: "Manrope-Medium",
     paddingVertical: spacing[2],
   },
 
@@ -823,18 +823,18 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontSize: 12,
-    fontFamily: "Manrope_600SemiBold",
+    fontFamily: "Manrope-SemiBold",
     letterSpacing: 0.8,
     marginBottom: spacing[2],
     textTransform: "uppercase",
   },
   field: {
     height: 52,
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 1.5,
     paddingHorizontal: spacing[4],
     fontSize: 16,
-    fontFamily: "Manrope_500Medium",
+    fontFamily: "Manrope-Medium",
   },
   genderPills: {
     flexDirection: "row",
@@ -844,12 +844,12 @@ const styles = StyleSheet.create({
   genderPill: {
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[2],
-    borderRadius: 100,
+    borderRadius: 0,
     borderWidth: 1.5,
   },
   genderPillText: {
     fontSize: 14,
-    fontFamily: "Manrope_500Medium",
+    fontFamily: "Manrope-Medium",
   },
 
   // Sports step
@@ -862,7 +862,7 @@ const styles = StyleSheet.create({
   sportTile: {
     width: TILE_SIZE,
     height: TILE_SIZE + 10,
-    borderRadius: 14,
+    borderRadius: 0,
     borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
@@ -873,7 +873,7 @@ const styles = StyleSheet.create({
   },
   sportLabel: {
     fontSize: 11,
-    fontFamily: "Manrope_600SemiBold",
+    fontFamily: "Manrope-SemiBold",
   },
   sportCheck: {
     position: "absolute",
@@ -881,7 +881,7 @@ const styles = StyleSheet.create({
     right: 6,
     width: 18,
     height: 18,
-    borderRadius: 9,
+    borderRadius: 0,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -890,7 +890,7 @@ const styles = StyleSheet.create({
   notifIconWrap: {
     width: 64,
     height: 64,
-    borderRadius: 18,
+    borderRadius: 0,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: spacing[6],
@@ -907,7 +907,7 @@ const styles = StyleSheet.create({
   notifDot: {
     width: 40,
     height: 40,
-    borderRadius: 12,
+    borderRadius: 0,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -923,26 +923,26 @@ const styles = StyleSheet.create({
   },
   welcomeTitle: {
     fontSize: 44,
-    fontFamily: "Lexend_800ExtraBold",
+    fontFamily: "Lexend-ExtraBold",
     lineHeight: 52,
     letterSpacing: -1,
     marginBottom: spacing[3],
   },
   welcomeSub: {
     fontSize: 15,
-    fontFamily: "Manrope_400Regular",
+    fontFamily: "Manrope-Regular",
     lineHeight: 23,
     marginBottom: spacing[5],
   },
   sportsBadge: {
-    borderRadius: 14,
+    borderRadius: 0,
     borderWidth: 1,
     padding: spacing[4],
     marginBottom: spacing[4],
   },
   statsRow: {
     flexDirection: "row",
-    borderRadius: 16,
+    borderRadius: 0,
     borderWidth: 1,
     overflow: "hidden",
     marginBottom: spacing[2],
@@ -959,6 +959,6 @@ const styles = StyleSheet.create({
   },
   statVal: {
     fontSize: 17,
-    fontFamily: "Lexend_700Bold",
+    fontFamily: "Lexend-Bold",
   },
 });

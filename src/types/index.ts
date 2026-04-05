@@ -33,6 +33,7 @@ export interface User {
   avatar_url: string | null;
   fitness_level: FitnessLevel | null;
   bio: string | null;
+  push_token: string | null;
   created_at: string;
   updated_at: string;
 }

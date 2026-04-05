@@ -82,17 +82,18 @@ export default function AnimatedProgressBar({
         </View>
       )}
 
+      {/* Track — no rounded caps (ROUND_NONE system) */}
       <View
         style={[
           styles.track,
-          { height, borderRadius: height / 2, backgroundColor: track },
+          { height, borderRadius: 0, backgroundColor: track },
         ]}
       >
         <Animated.View
           style={[
             StyleSheet.absoluteFill,
             barStyle,
-            { borderRadius: height / 2, overflow: 'hidden' },
+            { borderRadius: 0, overflow: 'hidden' },
           ]}
         >
           <LinearGradient
@@ -112,7 +113,7 @@ export default function AnimatedProgressBar({
                 left: `${milestone}%`,
                 height: height + 4,
                 top: -2,
-                backgroundColor: theme.colors.secondary,
+                backgroundColor: theme.colors.primary,
               },
             ]}
           />

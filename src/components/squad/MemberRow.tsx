@@ -1,4 +1,10 @@
-// Member contribution row for squad detail leaderboard
+// ─────────────────────────────────────────────────────────────
+// MemberRow — Tactical Command leaderboard row.
+// ROUND_NONE: 0px. Rank badges are sharp squares, not circles.
+// Rank 1: Electric Lime fill (locked-on). 2–3: tonal.
+// Contribution bar: square ends, lime fill, no border radius.
+// Vertical indication bar on rank 1 (primary left edge per spec).
+// ─────────────────────────────────────────────────────────────
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
@@ -13,23 +19,25 @@ import Animated, {
 import Avatar from '../common/Avatar';
 import { useTheme } from '../../contexts/ThemeContext';
 import { textStyles } from '../../theme/typography';
-import { spacing, radius } from '../../theme/spacing';
+import { spacing } from '../../theme/spacing';
 import type { SquadMember } from '../../types';
 
 interface MemberRowProps {
   member: SquadMember;
   rank: number;
-  contribution: number;     // absolute value (km, hrs, etc.)
-  maxContribution: number;  // used to scale the bar
+  contribution: number;
+  maxContribution: number;
   unit: string;
   animationDelay?: number;
 }
 
-const RANK_COLORS: Record<number, [string, string]> = {
-  1: ['#FFD700', '#FFA500'],
-  2: ['#C0C0C0', '#A0A0A0'],
-  3: ['#CD7F32', '#A0522D'],
-};
+// Tactical rank styling — no gold/silver/bronze. Data, not gamification.
+function getRankStyle(rank: number, primaryColor: string, outlineVariant: string, surfaceHigh: string) {
+  if (rank === 1) return { bg: primaryColor,    text: '#1a3000', isLime: true };
+  if (rank === 2) return { bg: outlineVariant,  text: '#ffffff', isLime: false };
+  if (rank === 3) return { bg: surfaceHigh,     text: '#adaaaa', isLime: false };
+  return null;
+}
 
 export default function MemberRow({
   member,
@@ -51,40 +59,49 @@ export default function MemberRow({
     width: `${widthAnim.value}%`,
   }));
 
-  const rankColors = RANK_COLORS[rank] ?? [theme.colors.primary, theme.colors.primary_light];
-  const isTop3 = rank <= 3;
+  const rankStyle = getRankStyle(
+    rank,
+    theme.colors.primary,
+    theme.colors.outline_variant,
+    theme.colors.surface_container_high,
+  );
+  const isTop = rank <= 3;
+  const isFirst = rank === 1;
 
   return (
-    <View style={[styles.row, { backgroundColor: rank % 2 === 0 ? theme.colors.glass : 'transparent' }]}>
-      {/* Rank */}
+    <View style={styles.row}>
+      {/* Vertical indication bar — lime for rank 1 (locked-on state per spec) */}
+      <View
+        style={[
+          styles.indicationBar,
+          { backgroundColor: isFirst ? theme.colors.primary : 'transparent' },
+        ]}
+      />
+
+      {/* Rank badge — ROUND_NONE sharp square */}
       <View style={styles.rankContainer}>
-        {isTop3 ? (
-          <LinearGradient colors={rankColors} style={styles.rankBadge}>
-            <Text style={styles.rankText}>{rank}</Text>
-          </LinearGradient>
+        {isTop && rankStyle ? (
+          <View style={[styles.rankBadge, { backgroundColor: rankStyle.bg }]}>
+            <Text style={[styles.rankText, { color: rankStyle.text, fontFamily: 'Manrope-Bold' }]}>
+              {rank}
+            </Text>
+          </View>
         ) : (
-          <Text style={[textStyles.titleSm, { color: theme.colors.on_surface_variant, width: 28, textAlign: 'center' }]}>
+          <Text style={[textStyles.titleSm, { color: theme.colors.on_surface_muted, width: 28, textAlign: 'center' }]}>
             {rank}
           </Text>
         )}
       </View>
 
-      {/* Avatar + name */}
-      <Avatar
-        uri={member.user?.avatar_url}
-        name={member.user?.display_name}
-        size={36}
-      />
+      {/* Avatar + name + bar */}
+      <Avatar uri={member.user?.avatar_url} name={member.user?.display_name} size={34} />
       <View style={styles.nameSection}>
-        <Text
-          style={[textStyles.titleMd, { color: theme.colors.on_surface }]}
-          numberOfLines={1}
-        >
+        <Text style={[textStyles.titleMd, { color: theme.colors.on_surface }]} numberOfLines={1}>
           {member.user?.display_name ?? 'Member'}
         </Text>
 
-        {/* Contribution bar */}
-        <View style={styles.barTrack}>
+        {/* Contribution bar — square ends, no border radius */}
+        <View style={[styles.barTrack, { backgroundColor: theme.colors.surface_container_highest }]}>
           <Animated.View style={[styles.barFill, barStyle]}>
             <LinearGradient
               colors={[theme.colors.gradient_progress_start, theme.colors.gradient_progress_end]}
@@ -96,9 +113,10 @@ export default function MemberRow({
         </View>
       </View>
 
-      {/* Value */}
-      <Text style={[textStyles.titleMd, { color: theme.colors.on_surface, minWidth: 60, textAlign: 'right' }]}>
-        {contribution.toFixed(1)} <Text style={{ color: theme.colors.on_surface_variant, fontSize: 12 }}>{unit}</Text>
+      {/* Contribution value */}
+      <Text style={[textStyles.titleMd, { color: isFirst ? theme.colors.primary : theme.colors.on_surface, minWidth: 56, textAlign: 'right' }]}>
+        {contribution.toFixed(1)}
+        <Text style={{ color: theme.colors.on_surface_variant, fontSize: 11 }}> {unit}</Text>
       </Text>
     </View>
   );
@@ -108,40 +126,44 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing[4],
+    paddingRight: spacing[4],
     paddingVertical: spacing[3],
     gap: spacing[3],
-    borderRadius: radius.md,
+    borderRadius: 0,  // ROUND_NONE
+  },
+  indicationBar: {
+    width: 2,
+    alignSelf: 'stretch',
+    flexShrink: 0,
   },
   rankContainer: {
-    width: 32,
+    width: 30,
     alignItems: 'center',
+    flexShrink: 0,
   },
   rankBadge: {
     width: 26,
     height: 26,
-    borderRadius: 13,
+    borderRadius: 0,  // ROUND_NONE — sharp square rank badge
     alignItems: 'center',
     justifyContent: 'center',
   },
   rankText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontFamily: 'Manrope_700Bold',
+    fontSize: 12,
+    letterSpacing: 0,
   },
   nameSection: {
     flex: 1,
     gap: 5,
   },
   barTrack: {
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    height: 3,
+    borderRadius: 0,   // square ends — no caps
     overflow: 'hidden',
   },
   barFill: {
     height: '100%',
-    borderRadius: 2,
+    borderRadius: 0,   // square ends
     overflow: 'hidden',
   },
 });

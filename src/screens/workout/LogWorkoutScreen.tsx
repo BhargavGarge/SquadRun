@@ -33,7 +33,7 @@ import RouteMapCard from "../../components/workout/RouteMapCard";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useAuthContext } from "../../contexts/AuthContext";
 import { useSquadStore } from "../../contexts/SquadContext";
-import { workoutsApi, activityApi } from "../../services/supabase";
+import { workoutsApi, activityApi, notifySquadMembers } from "../../services/supabase";
 import { sendLocalNotification } from "../../services/notifications";
 import { textStyles } from "../../theme/typography";
 import { spacing, radius } from "../../theme/spacing";
@@ -140,12 +140,20 @@ export default function LogWorkoutScreen() {
         // Refresh goal progress
         if (resolvedGoalId) await refreshGoal();
 
-        // Send in-app notification to squad
+        // Notify squad members in-app (DB insert) + local push for foreground
         const typeInfo = WORKOUT_TYPES.find((t) => t.type === type);
-        await sendLocalNotification(
-          "Workout logged! 💪",
-          `${dbUser.display_name} just logged a ${typeInfo?.label.toLowerCase() ?? type}`,
-        );
+        const notifTitle = "Workout logged!";
+        const notifBody  = `${dbUser.display_name} just logged a ${typeInfo?.label.toLowerCase() ?? type}`;
+        // Fire-and-forget — don't block the save flow
+        notifySquadMembers(
+          resolvedSquadId,
+          dbUser.id,
+          'workout_logged',
+          notifTitle,
+          notifBody,
+          { workout_id: workout.id, squad_id: resolvedSquadId },
+        ).catch(console.warn);
+        await sendLocalNotification(notifTitle, notifBody);
       }
 
       // Trigger celebration

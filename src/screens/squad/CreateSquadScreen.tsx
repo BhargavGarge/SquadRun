@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   emojiBtn: {
     width: 56,
     height: 56,
-    borderRadius: 16,
+    borderRadius: 0,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
