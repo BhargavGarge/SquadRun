@@ -1,188 +1,207 @@
 // ─────────────────────────────────────────────────────────────
-// Squad Goals — Design System Colors
-// Strava-inspired: deep blacks, bold orange (#FC4C02), clean neutrals
+// Squad Goals — Design System: Tactical Command / Technical Noir
+// Primary: Electric Lime (#CCFF00) — a laser, not a paint bucket.
+// Foundation: pitch-black void (#000000 / #0e0e0e).
+// Rule: tonal stacking defines depth, not borders or shadows.
+// Ghost border: outline_variant (#484848) for containment only.
 // ─────────────────────────────────────────────────────────────
 
 export const palette = {
-  // ── Strava Orange (primary brand) ──
-  orange50: "#FFF3EE",
-  orange100: "#FFE4D6",
-  orange200: "#FFC4A8",
-  orange300: "#FF9D73",
-  orange400: "#FF6B35",
-  orange500: "#FC4C02", // Strava orange
-  orange600: "#E04000",
-  orange700: "#B83300",
-  orange800: "#8F2600",
-  orange900: "#641A00",
+  // ── Electric Lime ──
+  lime100: '#f4ffcc',   // light tint — on-dark readable accents
+  lime200: '#e6ff99',
+  lime300: '#d9ff55',
+  lime400: '#CCFF00',   // PRIMARY — the laser. Use sparingly, high impact.
+  lime500: '#a8d400',   // dim state
+  lime600: '#86aa00',
+  lime700: '#648000',
+  lime800: '#425600',
+  lime900: '#1a3000',   // on-primary (text on lime surfaces)
 
-  // ── Emerald (success / running pace) ──
-  emerald400: "#34D399",
-  emerald500: "#10B981",
-  emerald600: "#059669",
+  // ── Soft Lime (Tertiary — trend indicators) ──
+  softLime: '#b0ff96',
 
-  // ── Red (alert / PR) ──
-  red400: "#F87171",
-  red500: "#EF4444",
+  // ── Emerald (success) ──
+  emerald400: '#34D399',
+  emerald500: '#10B981',
+  emerald600: '#059669',
 
-  // ── Blue (cycling / swim) ──
-  blue400: "#60A5FA",
-  blue500: "#3B82F6",
+  // ── Error — warm red per spec ──
+  red400: '#ff9175',
+  red500: '#ff7351',    // warm tactical red
 
-  // ── Yellow (hike / strength) ──
-  yellow400: "#FACC15",
-  yellow500: "#EAB308",
+  // ── Blue (cycling) ──
+  blue400: '#60A5FA',
+  blue500: '#3B82F6',
 
-  // ── Pure neutrals ──
-  white: "#FFFFFF",
-  neutral100: "#F5F5F5",
-  neutral200: "#E5E5E5",
-  neutral400: "#A3A3A3",
-  neutral500: "#737373",
-  neutral600: "#525252",
-  neutral700: "#404040",
-  neutral800: "#262626",
-  neutral900: "#171717",
+  // ── Amber (hike) ──
+  amber400: '#FACC15',
+  amber500: '#EAB308',
 
-  // ── Deep darks (app backgrounds) ──
-  dark000: "#000000",
-  dark100: "#0A0A0A",
-  dark150: "#111111",
-  dark200: "#161616",
-  dark300: "#1C1C1C",
-  dark400: "#222222",
-  dark500: "#2A2A2A",
-  dark600: "#333333",
-  dark700: "#3D3D3D",
+  // ── Neutrals ──
+  white:       '#FFFFFF',
+  neutral200:  '#e5e2e1',
+  neutral400:  '#adaaaa',
+  neutral500:  '#737373',
+  neutral600:  '#525252',
+
+  // ── Tactical surface tiers (obsidian chassis) ──
+  // Level 0: The void.
+  void:         '#000000',
+  // Level 0.5: Background
+  background:   '#0e0e0e',
+  // Level 1: Primary work area
+  surface:      '#131313',
+  // Level 1.5: Blocks
+  block:        '#191919',
+  // Level 2: Actionable / interactive zones
+  module:       '#1f1f1f',
+  // Level 2.5: Highest surfaces
+  elevated:     '#262626',
+  // Level 3: Top-level interactive
+  top:          '#313131',
+
+  // ── Ghost border ──
+  ghost:        '#484848',  // outline_variant — the only permitted structural border
+  ghostFaint:   '#282828',  // outline — barely there
 };
 
-// ─── Dark Theme (default) ────────────────────────────────────
+// ─── Dark Theme (default — Tactical Command) ─────────────────
 export const dark = {
   // Backgrounds
-  background: palette.dark100,
+  background: palette.background,
 
-  // Surface hierarchy
-  surface: palette.dark150,
-  surface_container_lowest: palette.dark000,
-  surface_container_low: palette.dark200,
-  surface_container: palette.dark300,
-  surface_container_high: palette.dark400,
-  surface_container_highest: palette.dark500,
+  // Surface hierarchy — tonal stacking creates depth, not shadows/borders
+  surface:                    palette.surface,    // #131313
+  surface_container_lowest:   palette.void,       // #000000
+  surface_container_low:      palette.surface,    // #131313
+  surface_container:          palette.block,      // #191919
+  surface_container_high:     palette.module,     // #1f1f1f
+  surface_container_highest:  palette.elevated,   // #262626
 
-  // Primary — Strava orange
-  primary: palette.orange500,
-  primary_light: palette.orange400,
-  primary_container: palette.orange900,
-  on_primary: palette.white,
-  on_primary_container: palette.orange200,
+  // Primary — Electric Lime
+  primary:              palette.lime400,  // #CCFF00 — THE laser
+  primary_light:        palette.softLime, // #b0ff96 — tertiary/trend indicator
+  primary_dim:          palette.lime500,  // #a8d400 — hover/pressed state
+  primary_container:    palette.lime400,  // #CCFF00 — CTA fills
+  on_primary:           palette.lime900,  // #1a3000 — text on lime surfaces
+  on_primary_container: palette.lime900,
 
-  // Secondary — muted for supporting elements
-  secondary: palette.neutral400,
-  secondary_light: palette.neutral200,
-  secondary_container: palette.dark500,
-  on_secondary: palette.white,
+  // Tertiary — soft lime for trend indicators, secondary accents
+  tertiary:             palette.softLime,
+  on_tertiary:          palette.lime900,
+
+  // Secondary — refined neutrals
+  secondary:           palette.neutral200,
+  secondary_light:     palette.white,
+  secondary_container: palette.elevated,
+  on_secondary:        palette.background,
 
   // Semantic
-  success: palette.emerald500,
-  success_container: "#052E16",
-  warning: palette.yellow400,
-  error: palette.red500,
-  error_container: "#450A0A",
-  info: palette.blue400,
+  success:           palette.emerald500,
+  success_container: '#052E16',
+  warning:           palette.amber400,
+  error:             palette.red500,      // warm red #ff7351
+  error_container:   '#3d0a00',
+  info:              palette.blue400,
 
-  // Text
-  on_surface: "#FFFFFF",
-  on_surface_variant: "#9A9A9A",
-  on_surface_muted: "#555555",
+  // Text hierarchy
+  on_surface:         '#ffffff',
+  on_surface_variant: palette.neutral400,   // #adaaaa
+  on_surface_muted:   '#555555',
 
-  // Outline / borders
-  outline: palette.dark600,
-  outline_variant: palette.dark500,
+  // Outline — ghost borders ONLY. Never for generic sectioning.
+  outline:         palette.ghostFaint,  // #282828 — barely perceptible
+  outline_variant: palette.ghost,       // #484848 — ghost border, felt not painted
 
-  // Glass (kept minimal — used for blur overlays only)
-  glass: "rgba(255, 255, 255, 0.04)",
-  glass_medium: "rgba(255, 255, 255, 0.07)",
-  glass_strong: "rgba(255, 255, 255, 0.12)",
-  glass_border: "rgba(255, 255, 255, 0.06)",
-  glass_border_strong: "rgba(255, 255, 255, 0.12)",
+  // Glass — for navigation bars and overlays (20px blur per spec)
+  glass:              'rgba(19, 19, 19, 0.80)',
+  glass_medium:       'rgba(25, 25, 25, 0.88)',
+  glass_strong:       'rgba(31, 31, 31, 0.94)',
+  glass_border:       'rgba(204, 255, 0, 0.08)',    // lime ghost at 8%
+  glass_border_strong:'rgba(204, 255, 0, 0.20)',    // lime ghost active/locked-on
 
-  // Workout type accent colors
-  workout_run: palette.orange500,
-  workout_cycle: palette.blue400,
-  workout_swim: "#22D3EE",
-  workout_strength: "#A78BFA",
-  workout_yoga: "#F9A8D4",
-  workout_hike: palette.yellow400,
-  workout_other: palette.neutral400,
+  // Workout type accents
+  workout_run:      palette.lime400,       // Electric Lime — primary action
+  workout_cycle:    palette.blue400,
+  workout_swim:     '#22D3EE',
+  workout_strength: '#A78BFA',
+  workout_yoga:     '#F9A8D4',
+  workout_hike:     palette.amber400,
+  workout_other:    palette.neutral400,
 
-  // Gradient stops
-  gradient_primary_start: palette.orange500,
-  gradient_primary_end: palette.orange700,
-  gradient_card_start: "rgba(0, 0, 0, 0.18)",
-  gradient_card_end: "rgba(252, 76, 2, 0.04)",
-  gradient_progress_start: palette.orange400,
-  gradient_progress_end: palette.yellow400,
-  gradient_success_start: palette.emerald400,
-  gradient_success_end: "#22D3EE",
+  // Gradients — Electric Lime hero gradient (135°)
+  gradient_primary_start: palette.lime400,  // #CCFF00
+  gradient_primary_end:   palette.lime500,  // #a8d400 — prevents flat vector look
+  gradient_card_start:    'rgba(0, 0, 0, 0.20)',
+  gradient_card_end:      'rgba(204, 255, 0, 0.04)',
+  gradient_progress_start: palette.lime400,
+  gradient_progress_end:   palette.lime300,
+  gradient_success_start:  palette.emerald400,
+  gradient_success_end:    '#22D3EE',
 };
 
 // ─── Light Theme ─────────────────────────────────────────────
 export const light = {
-  background: palette.neutral100,
-  surface: palette.white,
-  surface_container_lowest: palette.white,
-  surface_container_low: "#F5F5F5",
-  surface_container: "#EEEEEE",
-  surface_container_high: "#E5E5E5",
-  surface_container_highest: "#DDDDDD",
+  background: '#f5f5f5',
+  surface:                    '#ffffff',
+  surface_container_lowest:   '#ffffff',
+  surface_container_low:      '#F5F5F5',
+  surface_container:          '#EEEEEE',
+  surface_container_high:     '#E5E5E5',
+  surface_container_highest:  '#DDDDDD',
 
-  primary: palette.orange500,
-  primary_light: palette.orange600,
-  primary_container: palette.orange100,
-  on_primary: palette.white,
-  on_primary_container: palette.orange900,
+  primary:              palette.lime700,
+  primary_light:        palette.lime600,
+  primary_dim:          palette.lime800,
+  primary_container:    palette.lime400,
+  on_primary:           palette.white,
+  on_primary_container: palette.lime900,
 
-  secondary: palette.neutral600,
-  secondary_light: palette.neutral500,
+  tertiary:    palette.softLime,
+  on_tertiary: palette.lime900,
+
+  secondary:           palette.neutral600,
+  secondary_light:     palette.neutral500,
   secondary_container: palette.neutral200,
-  on_secondary: palette.white,
+  on_secondary:        palette.white,
 
-  success: palette.emerald600,
-  success_container: "#D1FAE5",
-  warning: palette.yellow500,
-  error: palette.red500,
-  error_container: "#FEE2E2",
-  info: palette.blue500,
+  success:           palette.emerald600,
+  success_container: '#D1FAE5',
+  warning:           palette.amber500,
+  error:             '#e55530',
+  error_container:   '#FEE2E2',
+  info:              palette.blue500,
 
-  on_surface: "#111111",
-  on_surface_variant: "#525252",
-  on_surface_muted: "#A3A3A3",
+  on_surface:         '#111111',
+  on_surface_variant: '#525252',
+  on_surface_muted:   '#A3A3A3',
 
-  outline: "#D4D4D4",
-  outline_variant: "#E5E5E5",
+  outline:         '#D4D4D4',
+  outline_variant: '#BEBEBE',
 
-  glass: "rgba(0,0,0,0.03)",
-  glass_medium: "rgba(0,0,0,0.06)",
-  glass_strong: "rgba(0,0,0,0.10)",
-  glass_border: "rgba(0,0,0,0.06)",
-  glass_border_strong: "rgba(0,0,0,0.12)",
+  glass:              'rgba(0,0,0,0.03)',
+  glass_medium:       'rgba(0,0,0,0.06)',
+  glass_strong:       'rgba(0,0,0,0.10)',
+  glass_border:       'rgba(0,0,0,0.08)',
+  glass_border_strong:'rgba(0,0,0,0.15)',
 
-  workout_run: palette.orange500,
-  workout_cycle: palette.blue500,
-  workout_swim: "#06B6D4",
-  workout_strength: "#7C3AED",
-  workout_yoga: "#EC4899",
-  workout_hike: palette.yellow500,
-  workout_other: palette.neutral600,
+  workout_run:      palette.lime600,
+  workout_cycle:    palette.blue500,
+  workout_swim:     '#06B6D4',
+  workout_strength: '#7C3AED',
+  workout_yoga:     '#EC4899',
+  workout_hike:     palette.amber500,
+  workout_other:    palette.neutral600,
 
-  gradient_primary_start: palette.orange500,
-  gradient_primary_end: palette.orange700,
-  gradient_card_start: "rgba(252, 76, 2, 0.10)",
-  gradient_card_end: "rgba(252, 76, 2, 0.02)",
-  gradient_progress_start: palette.orange500,
-  gradient_progress_end: palette.yellow400,
-  gradient_success_start: palette.emerald500,
-  gradient_success_end: "#06B6D4",
+  gradient_primary_start: palette.lime400,
+  gradient_primary_end:   palette.lime600,
+  gradient_card_start:    'rgba(204, 255, 0, 0.10)',
+  gradient_card_end:      'rgba(204, 255, 0, 0.02)',
+  gradient_progress_start: palette.lime400,
+  gradient_progress_end:   palette.lime200,
+  gradient_success_start:  palette.emerald500,
+  gradient_success_end:    '#06B6D4',
 };
 
 export type ColorTheme = typeof dark;

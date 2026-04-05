@@ -113,7 +113,7 @@ export default function Avatar({
           <Text
             style={{
               fontSize,
-              fontFamily: 'Lexend_700Bold',
+              fontFamily: 'Lexend-Bold',
               color: '#FFFFFF',
               letterSpacing: -0.5,
             }}
@@ -209,6 +209,6 @@ const styles = StyleSheet.create({
   badgeText: {
     color: '#FFFFFF',
     fontSize: 10,
-    fontFamily: 'Manrope_700Bold',
+    fontFamily: 'Manrope-Bold',
   },
 });

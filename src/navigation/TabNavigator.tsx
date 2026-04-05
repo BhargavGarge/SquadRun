@@ -44,8 +44,8 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
         styles.tabBarWrapper,
         {
           paddingBottom: insets.bottom,
+          // Tonal elevation separates tab bar — no border line.
           backgroundColor: theme.colors.surface_container_high,
-          borderTopColor: theme.colors.outline,
         },
       ]}
     >
@@ -120,7 +120,7 @@ export default function TabNavigator() {
 const styles = StyleSheet.create({
   tabBarWrapper: {
     flexDirection: "row",
-    borderTopWidth: StyleSheet.hairlineWidth,
+    // No hairline border — tonal depth is the separator.
   },
   tabItem: {
     flex: 1,

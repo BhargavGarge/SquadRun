@@ -103,15 +103,12 @@ export default function SquadListScreen() {
           ListEmptyComponent={
             !squadsLoading ? (
               <View style={styles.empty}>
-                <Text
-                  style={{
-                    fontSize: 48,
-                    textAlign: "center",
-                    marginBottom: spacing[4],
-                  }}
-                >
-                  👥
-                </Text>
+                {/* Tactical empty state — no emoji, geometric indicator */}
+                <View style={[styles.emptyIcon, { borderColor: theme.colors.outline_variant }]}>
+                  <Text style={{ fontFamily: 'Lexend-Bold', fontSize: 20, color: theme.colors.on_surface_muted, letterSpacing: -1 }}>
+                    SQ
+                  </Text>
+                </View>
                 <Text
                   style={[
                     textStyles.headlineSm,
@@ -256,7 +253,7 @@ const styles = StyleSheet.create({
   iconBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 0,   // ROUND_NONE
     alignItems: "center",
     justifyContent: "center",
   },
@@ -265,7 +262,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing[20],
   },
   card: {
-    borderRadius: 20,
+    borderRadius: 0,   // ROUND_NONE
   },
   cardHeaderRow: {
     flexDirection: "row",
@@ -279,11 +276,20 @@ const styles = StyleSheet.create({
   goalPill: {
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[1.5],
-    borderRadius: 999,
+    borderRadius: 0,   // ROUND_NONE — chips are the only pill exception, not goal labels
   },
   empty: {
     alignItems: "center",
     paddingTop: spacing[16],
     paddingHorizontal: spacing[8],
+  },
+  emptyIcon: {
+    width: 64,
+    height: 64,
+    borderWidth: 1,
+    borderRadius: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing[5],
   },
 });

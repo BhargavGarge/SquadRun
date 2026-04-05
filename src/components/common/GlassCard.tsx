@@ -1,7 +1,8 @@
 // ─────────────────────────────────────────────────────────────
-// GlassCard — Strava-style solid dark surface card.
-// Replaces glassmorphism with clean dark fills + subtle borders.
-// Press state spring animation (Reanimated).
+// GlassCard — Tactical Command surface card.
+// ROUND_NONE: 0px corners — sharp.
+// Ghost border (#484848 / outline_variant) contains, doesn't decorate.
+// "Locked-on" state (elevated): lime ghost border + neon bleed shadow.
 // ─────────────────────────────────────────────────────────────
 
 import React from 'react';
@@ -12,7 +13,6 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { useTheme } from '../../contexts/ThemeContext';
-import { radius } from '../../theme/spacing';
 
 interface GlassCardProps {
   children: React.ReactNode;
@@ -32,7 +32,7 @@ export default function GlassCard({
   style,
   onPress,
   padding = 16,
-  borderRadius = radius.xl,
+  borderRadius = 0,
   elevated = false,
   disabled = false,
 }: GlassCardProps) {
@@ -45,24 +45,30 @@ export default function GlassCard({
 
   const handlePressIn = () => {
     if (!onPress || disabled) return;
-    scale.value = withSpring(0.97, { damping: 15, stiffness: 300 });
+    scale.value = withSpring(0.98, { damping: 18, stiffness: 350 });
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 15, stiffness: 300 });
+    scale.value = withSpring(1, { damping: 18, stiffness: 350 });
   };
 
   const cardStyle: ViewStyle = {
-    borderRadius,
+    borderRadius: 0,  // ROUND_NONE — always 0 regardless of prop
     padding,
-    backgroundColor: theme.colors.surface_container_low,
+    backgroundColor: elevated
+      ? theme.colors.surface_container_high
+      : theme.colors.surface_container,
+    // Ghost border — outline_variant (#484848) for containment
     borderWidth: 1,
-    borderColor: theme.colors.outline,
+    borderColor: elevated
+      ? theme.colors.outline_variant  // #484848
+      : theme.colors.outline,          // #282828 (barely perceptible)
+    // Neon bleed on elevated — lime glow at low opacity
     ...(elevated
       ? {
-          shadowColor: theme.colors.primary,
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.15,
+          shadowColor: '#CCFF00',
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.10,
           shadowRadius: 12,
           elevation: 6,
         }

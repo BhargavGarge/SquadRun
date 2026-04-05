@@ -47,7 +47,7 @@ export async function getExpoPushToken(): Promise<string | null> {
         name: 'Squad Goals',
         importance: Notifications.AndroidImportance.HIGH,
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#7C3AED',
+        lightColor: '#cafd00',  // Electric Lime
       });
     }
 

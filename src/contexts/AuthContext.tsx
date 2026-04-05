@@ -8,6 +8,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { useUser, useAuth as useClerkAuth } from "@clerk/clerk-expo";
 import * as SecureStore from "expo-secure-store";
 import { usersApi, setTokenProvider } from "../services/supabase";
+import { getExpoPushToken } from "../services/notifications";
 import type { User } from "../types";
 
 interface AuthContextValue {
@@ -75,6 +76,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setDbUser(data);
       const stored = await SecureStore.getItemAsync(obKey(clerkUser.id));
       setOnboardingComplete(stored === "true");
+
+      // Register push token and persist it so the backend can send pushes.
+      // Non-critical — failure must not block auth flow.
+      try {
+        const pushToken = await getExpoPushToken();
+        if (pushToken && data.push_token !== pushToken) {
+          await usersApi.update(data.id, { push_token: pushToken });
+        }
+      } catch {
+        // Silently ignore — simulator/permissions may block this
+      }
     } catch (err) {
       console.error("[AuthContext] Failed to sync user:", err);
     } finally {

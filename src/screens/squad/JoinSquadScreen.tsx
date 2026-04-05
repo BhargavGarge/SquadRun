@@ -108,7 +108,7 @@ export default function JoinSquadScreen() {
               maxLength={6}
               leftIcon="key-outline"
               error={error}
-              style={{ textAlign: 'center', letterSpacing: 6, fontSize: 22, fontFamily: 'Lexend_700Bold' }}
+              style={{ textAlign: 'center', letterSpacing: 6, fontSize: 22, fontFamily: 'Lexend-Bold' }}
               returnKeyType="search"
               onSubmitEditing={handleLookup}
             />

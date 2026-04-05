@@ -101,8 +101,8 @@ export default function ProgressRing({
           fill="none"
           strokeDasharray={circumference}
           animatedProps={animatedProps}
-          strokeLinecap="round"
-          // Start from top
+          strokeLinecap="butt"
+          // Start from top — butt linecap = sharp tactical edge
           transform={`rotate(-90 ${cx} ${cy})`}
         />
       </Svg>

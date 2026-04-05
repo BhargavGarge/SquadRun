@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
   logoMark: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: 0,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: spacing[6],
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   },
   heading: {
     fontSize: 34,
-    fontFamily: 'Lexend_700Bold',
+    fontFamily: 'Lexend-Bold',
     letterSpacing: -0.5,
   },
   subheading: {

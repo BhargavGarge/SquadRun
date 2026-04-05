@@ -261,31 +261,32 @@ export default function SquadDetailScreen() {
             />
           </View>
 
-          {/* ── Tabs ─────────────────────────────────────────── */}
-          <View style={[styles.tabs, { borderColor: theme.colors.outline }]}>
+          {/* ── Tabs — tonal separation, no border line ──────── */}
+          <View style={styles.tabs}>
             {(['leaderboard', 'activity'] as const).map((tab) => (
               <TouchableOpacity
                 key={tab}
                 style={[
                   styles.tab,
-                  activeTab === tab && {
-                    borderBottomWidth: 2,
-                    borderBottomColor: theme.colors.primary_light,
-                  },
+                  { backgroundColor: activeTab === tab ? theme.colors.surface_container_high : 'transparent' },
                 ]}
                 onPress={() => setActiveTab(tab)}
               >
+                {/* Active indicator bar — lime bottom accent */}
+                {activeTab === tab && (
+                  <View style={[styles.tabAccent, { backgroundColor: theme.colors.primary }]} />
+                )}
                 <Text
                   style={[
-                    textStyles.titleMd,
+                    textStyles.labelMd,
                     {
                       color: activeTab === tab
-                        ? theme.colors.primary_light
+                        ? theme.colors.primary
                         : theme.colors.on_surface_variant,
                     },
                   ]}
                 >
-                  {tab === 'leaderboard' ? '🏆 Leaderboard' : '⚡ Activity'}
+                  {tab === 'leaderboard' ? 'LEADERBOARD' : 'ACTIVITY'}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -312,20 +313,20 @@ export default function SquadDetailScreen() {
           {activeTab === 'activity' && (
             <View style={styles.section}>
               {activity.length === 0 ? (
-                <View style={{ alignItems: 'center', paddingVertical: spacing[8] }}>
-                  <Text style={{ fontSize: 32 }}>🏃</Text>
-                  <Text style={[textStyles.bodyMd, { color: theme.colors.on_surface_variant, marginTop: spacing[3] }]}>
-                    No activity yet — log a workout!
+                <View style={{ paddingVertical: spacing[8] }}>
+                  <Text style={[textStyles.labelMd, { color: theme.colors.primary, marginBottom: spacing[2] }]}>
+                    ● STANDBY
+                  </Text>
+                  <Text style={[textStyles.bodyMd, { color: theme.colors.on_surface_variant }]}>
+                    No activity yet — log a workout.
                   </Text>
                 </View>
               ) : (
-                activity.map((item, i) => (
-                  <React.Fragment key={item.id}>
+                activity.map((item) => (
+                  // Zero-Divider Rule: 8px dead space separates items, no horizontal lines
+                  <View key={item.id} style={{ marginBottom: spacing[2] }}>
                     <ActivityFeedItem item={item} />
-                    {i < activity.length - 1 && (
-                      <View style={[styles.divider, { backgroundColor: theme.colors.outline }]} />
-                    )}
-                  </React.Fragment>
+                  </View>
                 ))
               )}
             </View>
@@ -387,20 +388,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing[3],
   },
+  // Tabs — tonal stacking separates, no border line
   tabs: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
     marginHorizontal: spacing[4],
     marginTop: spacing[6],
+    gap: spacing[1],
   },
   tab: {
     flex: 1,
     alignItems: 'center',
     paddingVertical: spacing[3],
+    position: 'relative',
   },
-  divider: {
-    height: 1,
-    opacity: 0.3,
-    marginHorizontal: spacing[2],
+  tabAccent: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 2,
   },
 });

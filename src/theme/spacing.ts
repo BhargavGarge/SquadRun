@@ -1,6 +1,8 @@
 // ─────────────────────────────────────────────────────────────
-// Spacing & layout tokens
-// Base unit: 4px — all values are multiples
+// Spacing & layout tokens — Tactical Command system
+// Base unit: 4px grid
+// Radius: ROUND_NONE — 0px everywhere. Every corner cuts.
+// Shadows: neon bleed (lime glow), never grey.
 // ─────────────────────────────────────────────────────────────
 
 export const spacing = {
@@ -29,56 +31,62 @@ export const spacing = {
   32: 128,
 };
 
-// Border radius tokens
+// Border radius — ROUND_NONE system.
+// Every interactive corner is 0px (sharp enough to cut).
+// `full` exists only for Chip-type elements (not buttons).
 export const radius = {
   none: 0,
-  xs: 4,
-  sm: 6,
-  md: 10,
-  lg: 14,
-  xl: 20,
-  '2xl': 28,
-  '3xl': 36,
-  full: 9999,
+  xs:   0,  // buttons, inputs — sharp corners per spec
+  sm:   0,  // small interactive elements
+  md:   0,  // containers
+  lg:   0,  // cards
+  xl:   0,  // large cards
+  '2xl': 0,
+  '3xl': 0,
+  full: 9999, // chips ONLY — never for buttons
 };
 
-// Shadow presets (iOS shadow + Android elevation)
+// Shadows — "Neon Bleed" not physical elevation.
+// Floating elements use a lime glow at low opacity (CRT monitor effect).
+// DON'T use grey shadows — they're muddy against the obsidian.
 export const shadows = {
   none: {},
   sm: {
-    shadowColor: '#7C3AED',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
+    shadowColor: '#CCFF00',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
     elevation: 2,
   },
   md: {
-    shadowColor: '#7C3AED',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
+    shadowColor: '#CCFF00',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.10,
+    shadowRadius: 16,
     elevation: 4,
   },
   lg: {
-    shadowColor: '#7C3AED',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.24,
-    shadowRadius: 20,
+    shadowColor: '#CCFF00',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.14,
+    shadowRadius: 24,
     elevation: 8,
   },
   xl: {
-    shadowColor: '#7C3AED',
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.30,
-    shadowRadius: 32,
-    elevation: 16,
+    // Floating tooltip/modal — 4px blur at 15% (CRT glow spec)
+    shadowColor: '#CCFF00',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 12,
   },
   glow: {
-    shadowColor: '#8B5CF6',
+    // Locked-on active state glow
+    shadowColor: '#CCFF00',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
-    elevation: 12,
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 16,
   },
 };
 

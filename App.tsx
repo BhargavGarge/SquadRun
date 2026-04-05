@@ -22,6 +22,7 @@ import * as SecureStore from 'expo-secure-store';
 import { ThemeProvider } from './src/contexts/ThemeContext';
 import { AuthProvider } from './src/contexts/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
+import ErrorBoundary from './src/components/common/ErrorBoundary';
 
 // Keep splash screen up while fonts load
 SplashScreen.preventAutoHideAsync();
@@ -77,17 +78,19 @@ export default function App() {
 
   return (
     <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
-      <ClerkProvider
-        publishableKey={clerkPublishableKey}
-        tokenCache={tokenCache}
-      >
-        <ThemeProvider>
-          <AuthProvider>
-            <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-            <AppNavigator />
-          </AuthProvider>
-        </ThemeProvider>
-      </ClerkProvider>
+      <ErrorBoundary>
+        <ClerkProvider
+          publishableKey={clerkPublishableKey}
+          tokenCache={tokenCache}
+        >
+          <ThemeProvider>
+            <AuthProvider>
+              <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+              <AppNavigator />
+            </AuthProvider>
+          </ThemeProvider>
+        </ClerkProvider>
+      </ErrorBoundary>
     </View>
   );
 }

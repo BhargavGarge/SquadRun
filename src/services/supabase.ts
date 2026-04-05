@@ -393,6 +393,79 @@ export const notificationsApi = {
   },
 };
 
+// ── Storage ──────────────────────────────────────────────────
+
+export const storageApi = {
+  /**
+   * Upload a local image URI to the `avatars` Supabase storage bucket.
+   * Returns the permanent public URL — safe to persist in the DB.
+   *
+   * @param clerkUserId - The Clerk user ID (auth.uid() in storage RLS).
+   *   Must match the folder name so RLS `(storage.foldername(name))[1] = auth.uid()` passes.
+   */
+  async uploadAvatar(clerkUserId: string, localUri: string): Promise<string> {
+    const db = await getClient();
+
+    // Fetch the file as a blob so we can upload it
+    const response = await fetch(localUri);
+    const blob = await response.blob();
+
+    const ext = localUri.split('.').pop()?.toLowerCase()?.replace(/\?.*$/, '') ?? 'jpg';
+    // Folder = Clerk user ID so it matches auth.uid() in storage RLS policies
+    const filePath = `${clerkUserId}/avatar.${ext}`;
+
+    const { error } = await db.storage
+      .from('avatars')
+      .upload(filePath, blob, {
+        contentType: blob.type || 'image/jpeg',
+        upsert: true,
+      });
+
+    if (error) throw error;
+
+    const { data } = db.storage.from('avatars').getPublicUrl(filePath);
+    // Cache-bust so the new avatar appears immediately
+    return `${data.publicUrl}?t=${Date.now()}`;
+  },
+};
+
+// ── Notification helpers ──────────────────────────────────────
+
+/**
+ * Insert in-app notifications for every squad member except the actor.
+ * Fire-and-forget safe — call without awaiting to avoid blocking UI.
+ */
+export async function notifySquadMembers(
+  squadId: string,
+  actorId: string,
+  kind: import('../types').NotificationKind,
+  title: string,
+  body: string,
+  data: Record<string, unknown> = {},
+): Promise<void> {
+  const db = await getClient();
+
+  // Fetch all other members of this squad
+  const { data: members, error } = await db
+    .from('squad_members')
+    .select('user_id')
+    .eq('squad_id', squadId)
+    .neq('user_id', actorId);
+
+  if (error || !members?.length) return;
+
+  const rows = members.map((m: { user_id: string }) => ({
+    user_id: m.user_id,
+    kind,
+    title,
+    body,
+    data,
+    read: false,
+  }));
+
+  await db.from('notifications').insert(rows);
+}
+
 // ── Real-time subscriptions ───────────────────────────────────
 
 /**

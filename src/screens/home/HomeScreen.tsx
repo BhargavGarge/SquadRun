@@ -331,8 +331,8 @@ export default function HomeScreen() {
                 })
               }
             >
-              <Text style={{ fontSize: 18 }}>🏃</Text>
-              <Text style={[textStyles.titleMd, { color: "#fff" }]}>
+              <Text style={{ fontSize: 18 }}>▶️</Text>
+              <Text style={[textStyles.titleMd, { color: "black" }]}>
                 Start Run
               </Text>
             </TouchableOpacity>
@@ -779,8 +779,8 @@ const styles = StyleSheet.create({
   },
   headerName: {
     fontSize: 28,
-    fontFamily: "Lexend_700Bold",
-    letterSpacing: -0.5,
+    fontFamily: 'Lexend-Bold',     // correct font name
+    letterSpacing: -1.40,          // -0.05em
     marginTop: 2,
   },
   headerRight: {
@@ -791,7 +791,7 @@ const styles = StyleSheet.create({
   iconBtn: {
     width: 38,
     height: 38,
-    borderRadius: 19,
+    borderRadius: 0,   // ROUND_NONE
     alignItems: "center",
     justifyContent: "center",
   },
@@ -802,7 +802,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   goalAccentBar: {
-    height: 3,
+    height: 2,
     width: "100%",
   },
   goalCardBody: {
@@ -816,14 +816,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     alignSelf: "flex-start",
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 20,
+    paddingVertical: 3,
+    borderRadius: 0,   // ROUND_NONE
     marginBottom: spacing[2],
   },
   goalTitle: {
     fontSize: 18,
-    fontFamily: "Lexend_600SemiBold",
-    lineHeight: 24,
+    fontFamily: 'Lexend-SemiBold',   // correct font name
+    lineHeight: 22,
+    letterSpacing: -0.90,            // -0.05em
   },
   progressCircle: {
     width: 68,
@@ -834,14 +835,14 @@ const styles = StyleSheet.create({
   progressTrack: {
     width: 64,
     height: 64,
-    borderRadius: 32,
-    borderWidth: 3,
+    borderRadius: 0,    // ROUND_NONE — square progress box
+    borderWidth: 2,
     alignItems: "center",
     justifyContent: "center",
   },
   progressPct: {
     fontSize: 15,
-    fontFamily: "Lexend_700Bold",
+    fontFamily: 'Lexend-Bold',   // correct font name
   },
   progressBg: {
     height: 3,
@@ -858,14 +859,14 @@ const styles = StyleSheet.create({
   emptyIcon: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 0,   // ROUND_NONE
     alignItems: "center",
     justifyContent: "center",
   },
 
   quickActions: {
     flexDirection: "row",
-    gap: spacing[3],
+    gap: spacing[2],
     marginBottom: spacing[6],
   },
   quickAction: {
@@ -874,24 +875,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: spacing[2],
-    height: 48,
-    borderRadius: 12,
+    height: 52,
+    borderRadius: 0,   // ROUND_NONE
   },
 
   sectionLabel: {
-    fontSize: 11,
-    fontFamily: "Manrope_700Bold",
+    fontSize: 12,
+    fontFamily: 'Manrope-Bold',    // correct font name
     letterSpacing: 1.5,
+    textTransform: 'uppercase',
     marginBottom: spacing[3],
     marginTop: spacing[2],
   },
   emptyFeed: {
-    alignItems: "center",
+    alignItems: "flex-start",
     paddingVertical: spacing[8],
     gap: spacing[3],
   },
-  emptyText: { textAlign: "center" },
-  feedDivider: { height: 1, marginHorizontal: spacing[4], opacity: 0.4 },
+  emptyText: { },
+  feedDivider: { height: 0 }, // Zero-Divider Rule — no horizontal lines
   activityCardWrapper: { marginBottom: spacing[3] },
   activityMetaCard: {
     paddingVertical: spacing[1.5],
@@ -902,7 +904,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   activityAccentBar: {
-    height: 3,
+    height: 2,
     width: "100%",
   },
   activityCardBody: {
@@ -915,7 +917,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing[3],
   },
   typePill: {
-    borderRadius: 999,
+    borderRadius: 0,   // ROUND_NONE — no pill shapes except Chips
     paddingHorizontal: spacing[2],
     paddingVertical: spacing[1],
     alignItems: "center",
@@ -944,7 +946,7 @@ const styles = StyleSheet.create({
   segmentCard: {
     flex: 1,
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 0,   // ROUND_NONE
     padding: spacing[2.5],
   },
   segmentHeaderRow: {
@@ -954,7 +956,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing[1.5],
   },
   segmentPill: {
-    borderRadius: 999,
+    borderRadius: 0,   // ROUND_NONE
     paddingHorizontal: spacing[1.5],
     paddingVertical: spacing[0.5],
   },
