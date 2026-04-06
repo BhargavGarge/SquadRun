@@ -41,7 +41,11 @@ export type HomeStackParamList = {
       distance_km?: number;
       duration_minutes?: number;
       steps?: number;
-      route_coords?: { latitude: number; longitude: number; timestamp?: number }[];
+      route_coords?: {
+        latitude: number;
+        longitude: number;
+        timestamp?: number;
+      }[];
     };
   };
   ActiveWorkout: { type?: string; squadId?: string; goalId?: string };
@@ -52,4 +56,27 @@ export type RootStackParamList = {
   Auth: undefined;
   Onboarding: undefined;
   Main: undefined;
+  SquadDetail: { squadId: string };
+  CreateSquad: undefined;
+  JoinSquad: undefined;
+  CreateGoal: { squadId: string };
+  LogWorkout: {
+    squadId?: string;
+    goalId?: string;
+    prefill?: {
+      type?: string;
+      distance_km?: number;
+      duration_minutes?: number;
+      steps?: number;
+      route_coords?: {
+        latitude: number;
+        longitude: number;
+        timestamp?: number;
+      }[];
+    };
+  };
+  ActiveWorkout: { type?: string; squadId?: string; goalId?: string };
+  WorkoutDetail: { workoutId: string };
+  Stats: undefined;
+  Settings: undefined;
 };

@@ -24,6 +24,8 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   withDelay,
+  withRepeat,
+  withSequence,
 } from "react-native-reanimated";
 
 import { useTheme } from "../../contexts/ThemeContext";
@@ -33,10 +35,113 @@ import GlassCard from "../../components/common/GlassCard";
 import Avatar from "../../components/common/Avatar";
 import WorkoutCard from "../../components/workout/WorkoutCard";
 import ActivityFeedItem from "../../components/squad/ActivityFeedItem";
+import {
+  ActivityFilterButton,
+  ActivityFilterModal,
+  type ActivityFilters,
+} from "../../components/squad/ActivityFeedFilter";
 import { textStyles } from "../../theme/typography";
 import { spacing } from "../../theme/spacing";
 import { getGreeting, formatValue } from "../../utils/helpers";
 import type { ActivityItem, WorkoutType } from "../../types";
+
+// ─── Skeleton helpers ─────────────────────────────────────────
+
+function SkeletonBlock({
+  width = "100%" as any,
+  height,
+  style,
+}: {
+  width?: number | string;
+  height: number;
+  style?: any;
+}) {
+  const { theme } = useTheme();
+  const pulse = useSharedValue(0.35);
+
+  useEffect(() => {
+    pulse.value = withRepeat(
+      withSequence(
+        withTiming(0.7, { duration: 750 }),
+        withTiming(0.35, { duration: 750 }),
+      ),
+      -1,
+      false,
+    );
+  }, []);
+
+  const animStyle = useAnimatedStyle(() => ({ opacity: pulse.value }));
+
+  return (
+    <Animated.View
+      style={[
+        {
+          width,
+          height,
+          borderRadius: 0,
+          backgroundColor: theme.colors.surface_container,
+        },
+        animStyle,
+        style,
+      ]}
+    />
+  );
+}
+
+function GoalCardSkeleton() {
+  return (
+    <GlassCard
+      elevated
+      style={[styles.goalCard, { padding: 0, overflow: "hidden" } as any]}
+    >
+      <SkeletonBlock height={2} />
+      <View
+        style={{ flexDirection: "row", padding: spacing[4], gap: spacing[4] }}
+      >
+        <View style={{ flex: 1, gap: spacing[2] }}>
+          <SkeletonBlock height={14} width={80} />
+          <SkeletonBlock height={18} width="70%" />
+          <SkeletonBlock height={13} width="45%" />
+        </View>
+        <SkeletonBlock width={64} height={64} />
+      </View>
+      <SkeletonBlock height={3} />
+    </GlassCard>
+  );
+}
+
+function FeedItemSkeleton() {
+  return (
+    <GlassCard
+      style={[
+        styles.activityCard,
+        { padding: 0, overflow: "hidden", marginBottom: spacing[3] } as any,
+      ]}
+    >
+      <SkeletonBlock height={2} />
+      <View style={{ padding: spacing[4] }}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: spacing[3],
+            marginBottom: spacing[3],
+          }}
+        >
+          <SkeletonBlock width={40} height={40} />
+          <View style={{ flex: 1, gap: spacing[2] }}>
+            <SkeletonBlock height={13} width="50%" />
+            <SkeletonBlock height={11} width="35%" />
+          </View>
+        </View>
+        <View style={{ flexDirection: "row", gap: spacing[4] }}>
+          <SkeletonBlock height={36} width={70} />
+          <SkeletonBlock height={36} width={70} />
+        </View>
+      </View>
+    </GlassCard>
+  );
+}
 
 export default function HomeScreen() {
   const { theme } = useTheme();
@@ -50,12 +155,17 @@ export default function HomeScreen() {
     goalProgress,
     workouts,
     activity,
+    activityLoading,
     loadSquads,
     selectSquad,
     refreshGoal,
   } = useSquadStore();
 
   const [refreshing, setRefreshing] = React.useState(false);
+  const [showFilterModal, setShowFilterModal] = React.useState(false);
+  const [filters, setFilters] = React.useState<ActivityFilters>({
+    types: new Set(),
+  });
 
   const headerOp = useSharedValue(0);
   const cardOp = useSharedValue(0);
@@ -87,6 +197,16 @@ export default function HomeScreen() {
     if (activeSquad) await selectSquad(activeSquad);
     setRefreshing(false);
   }, [dbUser, activeSquad]);
+
+  // Filter activity based on selected types
+  const filteredActivity = React.useMemo(() => {
+    if (filters.types.size === 0) return activity;
+    return activity.filter((item) => {
+      if (item.kind !== "workout") return true; // Always show non-workout items
+      const workoutData = (item.payload as any) ?? {};
+      return filters.types.has(workoutData.type);
+    });
+  }, [activity, filters.types]);
 
   const headerStyle = useAnimatedStyle(() => ({ opacity: headerOp.value }));
   const cardStyle = useAnimatedStyle(() => ({ opacity: cardOp.value }));
@@ -158,7 +278,9 @@ export default function HomeScreen() {
 
           {/* ── Squad goal progress card ────────────────────── */}
           <Animated.View style={cardStyle}>
-            {activeGoal && activeSquad ? (
+            {squadsLoading ? (
+              <GoalCardSkeleton />
+            ) : activeGoal && activeSquad ? (
               <GlassCard
                 elevated
                 style={styles.goalCard}
@@ -331,7 +453,8 @@ export default function HomeScreen() {
                 })
               }
             >
-              <Text style={{ fontSize: 18 }}>▶️</Text>
+              <Ionicons name="play" size={22} color="black" />
+
               <Text style={[textStyles.titleMd, { color: "black" }]}>
                 Start Run
               </Text>
@@ -359,16 +482,50 @@ export default function HomeScreen() {
 
           {/* ── Activity feed ───────────────────────────────── */}
           <Animated.View style={feedStyle}>
-            <Text
-              style={[
-                styles.sectionLabel,
-                { color: theme.colors.on_surface_variant },
-              ]}
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: spacing[3],
+              }}
             >
-              SQUAD FEED
-            </Text>
+              <Text
+                style={[
+                  styles.sectionLabel,
+                  { color: theme.colors.on_surface_variant },
+                ]}
+              >
+                SQUAD FEED
+              </Text>
+              <View style={{ flexDirection: "row", gap: spacing[2] }}>
+                <ActivityFilterButton
+                  activeFiltersCount={filters.types.size}
+                  onPress={() => setShowFilterModal(true)}
+                />
+                <Pressable
+                  onPress={() => navigation.navigate("Stats")}
+                  style={[
+                    styles.statsBtn,
+                    { backgroundColor: theme.colors.surface_container },
+                  ]}
+                >
+                  <Ionicons
+                    name="stats-chart-outline"
+                    size={18}
+                    color={theme.colors.on_surface}
+                  />
+                </Pressable>
+              </View>
+            </View>
 
-            {activity.length === 0 ? (
+            {activityLoading ? (
+              <>
+                <FeedItemSkeleton />
+                <FeedItemSkeleton />
+                <FeedItemSkeleton />
+              </>
+            ) : filteredActivity.length === 0 ? (
               <GlassCard style={styles.emptyFeed}>
                 <Ionicons
                   name="bicycle-outline"
@@ -383,11 +540,13 @@ export default function HomeScreen() {
                     { color: theme.colors.on_surface_variant },
                   ]}
                 >
-                  No activity yet. Log your first workout!
+                  {filters.types.size > 0
+                    ? "No activities match your filters"
+                    : "No activity yet. Log your first workout!"}
                 </Text>
               </GlassCard>
             ) : (
-              activity.slice(0, 5).map((item: ActivityItem) => (
+              filteredActivity.slice(0, 5).map((item: ActivityItem) => (
                 <View key={item.id} style={styles.activityCardWrapper}>
                   {item.kind === "workout" ? (
                     <WorkoutActivityCard item={item} />
@@ -400,6 +559,14 @@ export default function HomeScreen() {
               ))
             )}
           </Animated.View>
+
+          {/* ── Filter Modal ────────────────────────────────── */}
+          <ActivityFilterModal
+            visible={showFilterModal}
+            onClose={() => setShowFilterModal(false)}
+            filters={filters}
+            onFiltersChange={setFilters}
+          />
 
           {/* ── Recent workouts ─────────────────────────────── */}
           {workouts.length > 0 && (
@@ -431,6 +598,7 @@ interface WorkoutActivityCardProps {
 
 function WorkoutActivityCard({ item }: WorkoutActivityCardProps) {
   const { theme } = useTheme();
+  const navigation = useNavigation<any>();
 
   const workout: any = item.workout ?? (item.payload as any) ?? {};
   const type: WorkoutType = (workout.type as WorkoutType) ?? "other";
@@ -473,8 +641,14 @@ function WorkoutActivityCard({ item }: WorkoutActivityCardProps) {
     effortLabel,
   });
 
+  const handlePress = () => {
+    if (workout.id) {
+      navigation.navigate("WorkoutDetail", { workoutId: workout.id });
+    }
+  };
+
   return (
-    <GlassCard style={styles.activityCard}>
+    <GlassCard style={styles.activityCard} onPress={handlePress}>
       <View
         style={[styles.activityAccentBar, { backgroundColor: accentColor }]}
       />
@@ -779,8 +953,8 @@ const styles = StyleSheet.create({
   },
   headerName: {
     fontSize: 28,
-    fontFamily: 'Lexend-Bold',     // correct font name
-    letterSpacing: -1.40,          // -0.05em
+    fontFamily: "Lexend-Bold", // correct font name
+    letterSpacing: -1.4, // -0.05em
     marginTop: 2,
   },
   headerRight: {
@@ -791,7 +965,7 @@ const styles = StyleSheet.create({
   iconBtn: {
     width: 38,
     height: 38,
-    borderRadius: 0,   // ROUND_NONE
+    borderRadius: 0, // ROUND_NONE
     alignItems: "center",
     justifyContent: "center",
   },
@@ -817,14 +991,14 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 0,   // ROUND_NONE
+    borderRadius: 0, // ROUND_NONE
     marginBottom: spacing[2],
   },
   goalTitle: {
     fontSize: 18,
-    fontFamily: 'Lexend-SemiBold',   // correct font name
+    fontFamily: "Lexend-SemiBold", // correct font name
     lineHeight: 22,
-    letterSpacing: -0.90,            // -0.05em
+    letterSpacing: -0.9, // -0.05em
   },
   progressCircle: {
     width: 68,
@@ -835,14 +1009,14 @@ const styles = StyleSheet.create({
   progressTrack: {
     width: 64,
     height: 64,
-    borderRadius: 0,    // ROUND_NONE — square progress box
+    borderRadius: 0, // ROUND_NONE — square progress box
     borderWidth: 2,
     alignItems: "center",
     justifyContent: "center",
   },
   progressPct: {
     fontSize: 15,
-    fontFamily: 'Lexend-Bold',   // correct font name
+    fontFamily: "Lexend-Bold", // correct font name
   },
   progressBg: {
     height: 3,
@@ -859,7 +1033,7 @@ const styles = StyleSheet.create({
   emptyIcon: {
     width: 44,
     height: 44,
-    borderRadius: 0,   // ROUND_NONE
+    borderRadius: 0, // ROUND_NONE
     alignItems: "center",
     justifyContent: "center",
   },
@@ -876,23 +1050,30 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: spacing[2],
     height: 52,
-    borderRadius: 0,   // ROUND_NONE
+    borderRadius: 0, // ROUND_NONE
   },
 
   sectionLabel: {
     fontSize: 12,
-    fontFamily: 'Manrope-Bold',    // correct font name
+    fontFamily: "Manrope-Bold", // correct font name
     letterSpacing: 1.5,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     marginBottom: spacing[3],
     marginTop: spacing[2],
+  },
+  statsBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
   },
   emptyFeed: {
     alignItems: "flex-start",
     paddingVertical: spacing[8],
     gap: spacing[3],
   },
-  emptyText: { },
+  emptyText: {},
   feedDivider: { height: 0 }, // Zero-Divider Rule — no horizontal lines
   activityCardWrapper: { marginBottom: spacing[3] },
   activityMetaCard: {
@@ -917,7 +1098,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing[3],
   },
   typePill: {
-    borderRadius: 0,   // ROUND_NONE — no pill shapes except Chips
+    borderRadius: 0, // ROUND_NONE — no pill shapes except Chips
     paddingHorizontal: spacing[2],
     paddingVertical: spacing[1],
     alignItems: "center",
@@ -946,7 +1127,7 @@ const styles = StyleSheet.create({
   segmentCard: {
     flex: 1,
     borderWidth: 1,
-    borderRadius: 0,   // ROUND_NONE
+    borderRadius: 0, // ROUND_NONE
     padding: spacing[2.5],
   },
   segmentHeaderRow: {
@@ -956,7 +1137,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing[1.5],
   },
   segmentPill: {
-    borderRadius: 0,   // ROUND_NONE
+    borderRadius: 0, // ROUND_NONE
     paddingHorizontal: spacing[1.5],
     paddingVertical: spacing[0.5],
   },
