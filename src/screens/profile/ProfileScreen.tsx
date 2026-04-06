@@ -43,7 +43,7 @@ export default function ProfileScreen() {
   const { dbUser, refreshUser } = useAuthContext();
   const navigation = useNavigation<any>();
   const { signOut } = useAuth();
-  const { squads, clearSquad } = useSquadStore();
+  const { squads, clearSquad, activity } = useSquadStore();
 
   const [uploading, setUploading] = useState(false);
 
@@ -294,9 +294,8 @@ export default function ProfileScreen() {
                 </Text>
               ) : (
                 <View style={{ gap: spacing[1] }}>
-                  {useSquadStore
-                    .getState()
-                    .activity.filter((item) => item.user_id === dbUser?.id)
+                  {(activity ?? [])
+                    .filter((item) => item.user_id === dbUser?.id)
                     .slice(0, 4)
                     .map((item) => (
                       <ActivityFeedItem key={item.id} item={item} />

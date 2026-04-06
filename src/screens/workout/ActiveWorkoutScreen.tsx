@@ -5,37 +5,38 @@
 // On finish → pre-fills LogWorkoutScreen.
 // ─────────────────────────────────────────────────────────────
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Alert,
-  Platform,
   StatusBar,
   Dimensions,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import MapView, { Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
-import * as Location from 'expo-location';
-import { Pedometer } from 'expo-sensors/build/Pedometer';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { useNavigation, useRoute } from '@react-navigation/native';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import MapView, { Polyline } from "react-native-maps";
+import * as Location from "expo-location";
+import { Pedometer } from "expo-sensors/build/Pedometer";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useNavigation, useRoute } from "@react-navigation/native";
 
-import { useTheme } from '../../contexts/ThemeContext';
-import { textStyles } from '../../theme/typography';
-import { spacing, radius } from '../../theme/spacing';
-import type { WorkoutType, RouteCoord } from '../../types';
+import { useTheme } from "../../contexts/ThemeContext";
+import { textStyles } from "../../theme/typography";
+import { spacing, radius } from "../../theme/spacing";
+import type { WorkoutType, RouteCoord } from "../../types";
 
-const { height: SCREEN_H } = Dimensions.get('window');
+const { height: SCREEN_H } = Dimensions.get("window");
 
 // ─── Helpers ──────────────────────────────────────────────────
 
 function haversineKm(
-  lat1: number, lon1: number,
-  lat2: number, lon2: number,
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
 ): number {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -43,8 +44,8 @@ function haversineKm(
   const a =
     Math.sin(dLat / 2) ** 2 +
     Math.cos((lat1 * Math.PI) / 180) *
-    Math.cos((lat2 * Math.PI) / 180) *
-    Math.sin(dLon / 2) ** 2;
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
@@ -53,17 +54,17 @@ function formatDuration(seconds: number): string {
   const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;
   if (h > 0) {
-    return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   }
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
 function formatPace(distanceKm: number, seconds: number): string {
-  if (distanceKm < 0.01 || seconds < 1) return '--\'--"';
+  if (distanceKm < 0.01 || seconds < 1) return "--'--\"";
   const paceSecPerKm = seconds / distanceKm;
   const m = Math.floor(paceSecPerKm / 60);
   const s = Math.floor(paceSecPerKm % 60);
-  return `${m}'${String(s).padStart(2, '0')}"`;
+  return `${m}'${String(s).padStart(2, "0")}"`;
 }
 
 // Thin the route for the activity feed payload (max 200 points)
@@ -75,25 +76,53 @@ function simplifyCoords(coords: RouteCoord[], maxPts = 200): RouteCoord[] {
 
 // Dark Google Maps style
 const DARK_MAP_STYLE = [
-  { elementType: 'geometry', stylers: [{ color: '#1a1a1a' }] },
-  { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#6b6b6b' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#1a1a1a' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#2c2c2c' }] },
-  { featureType: 'road.arterial', elementType: 'geometry', stylers: [{ color: '#373737' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#3c3c3c' }] },
-  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#8a8a8a' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#000000' }] },
-  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#3d3d3d' }] },
-  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+  { elementType: "geometry", stylers: [{ color: "#1a1a1a" }] },
+  { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#6b6b6b" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#1a1a1a" }] },
+  {
+    featureType: "road",
+    elementType: "geometry",
+    stylers: [{ color: "#2c2c2c" }],
+  },
+  {
+    featureType: "road.arterial",
+    elementType: "geometry",
+    stylers: [{ color: "#373737" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry",
+    stylers: [{ color: "#3c3c3c" }],
+  },
+  {
+    featureType: "road",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#8a8a8a" }],
+  },
+  {
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [{ color: "#000000" }],
+  },
+  {
+    featureType: "water",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#3d3d3d" }],
+  },
+  { featureType: "poi", stylers: [{ visibility: "off" }] },
+  { featureType: "transit", stylers: [{ visibility: "off" }] },
 ];
 
 const WORKOUT_EMOJI: Record<string, string> = {
-  run: '🏃', cycle: '🚴', hike: '🥾', swim: '🏊', other: '⚡',
+  run: "🏃",
+  cycle: "🚴",
+  hike: "🥾",
+  swim: "🏊",
+  other: "⚡",
 };
 
-type TrackingStatus = 'idle' | 'active' | 'paused';
+type TrackingStatus = "idle" | "active" | "paused";
 
 // ─── Screen ───────────────────────────────────────────────────
 
@@ -101,20 +130,25 @@ export default function ActiveWorkoutScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { type = 'run', squadId, goalId } = route.params ?? {};
+  const { type = "run", squadId, goalId } = route.params ?? {};
 
-  const [status, setStatus] = useState<TrackingStatus>('idle');
+  const [status, setStatus] = useState<TrackingStatus>("idle");
   const [coords, setCoords] = useState<RouteCoord[]>([]);
   const [distanceKm, setDistanceKm] = useState(0);
   const [durationSeconds, setDurationSeconds] = useState(0);
   const [steps, setSteps] = useState(0);
-  const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [pedometerAvailable, setPedometerAvailable] = useState(false);
 
   const mapRef = useRef<MapView>(null);
   const locationSubRef = useRef<Location.LocationSubscription | null>(null);
-  const pedometerSubRef = useRef<ReturnType<typeof Pedometer.watchStepCount> | null>(null);
+  const pedometerSubRef = useRef<ReturnType<
+    typeof Pedometer.watchStepCount
+  > | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastCoordRef = useRef<RouteCoord | null>(null);
   const distanceRef = useRef(0);
@@ -124,9 +158,12 @@ export default function ActiveWorkoutScreen() {
   // ── Permission + initial location on mount ──────────────────
   useEffect(() => {
     (async () => {
-      const { status: locStatus } = await Location.requestForegroundPermissionsAsync();
-      if (locStatus !== 'granted') {
-        setLocationError('Location permission denied — enable it in Settings to track your route.');
+      const { status: locStatus } =
+        await Location.requestForegroundPermissionsAsync();
+      if (locStatus !== "granted") {
+        setLocationError(
+          "Location permission denied — enable it in Settings to track your route.",
+        );
         return;
       }
       try {
@@ -138,7 +175,7 @@ export default function ActiveWorkoutScreen() {
           longitude: loc.coords.longitude,
         });
       } catch {
-        setLocationError('Could not get your location. Check GPS signal.');
+        setLocationError("Could not get your location. Check GPS signal.");
       }
       const available = await Pedometer.isAvailableAsync();
       setPedometerAvailable(available);
@@ -161,24 +198,27 @@ export default function ActiveWorkoutScreen() {
   const startTracking = useCallback(async () => {
     // Timer
     timerRef.current = setInterval(() => {
-      setDurationSeconds(prev => prev + 1);
+      setDurationSeconds((prev) => prev + 1);
     }, 1000);
 
     // GPS
     locationSubRef.current = await Location.watchPositionAsync(
       {
         accuracy: Location.Accuracy.BestForNavigation,
-        distanceInterval: 5,   // metres moved before next update
+        distanceInterval: 5, // metres moved before next update
         timeInterval: 1000,
       },
-      loc => {
+      (loc) => {
         const newCoord: RouteCoord = {
           latitude: loc.coords.latitude,
           longitude: loc.coords.longitude,
           timestamp: loc.timestamp,
         };
-        setCurrentLocation({ latitude: newCoord.latitude, longitude: newCoord.longitude });
-        setCoords(prev => [...prev, newCoord]);
+        setCurrentLocation({
+          latitude: newCoord.latitude,
+          longitude: newCoord.longitude,
+        });
+        setCoords((prev) => [...prev, newCoord]);
 
         if (lastCoordRef.current) {
           distanceRef.current += haversineKm(
@@ -202,7 +242,7 @@ export default function ActiveWorkoutScreen() {
     // Pedometer
     if (pedometerAvailable) {
       const offset = stepOffsetRef.current;
-      pedometerSubRef.current = Pedometer.watchStepCount(result => {
+      pedometerSubRef.current = Pedometer.watchStepCount((result) => {
         const total = offset + result.steps;
         stepsRef.current = total;
         setSteps(total);
@@ -214,7 +254,7 @@ export default function ActiveWorkoutScreen() {
 
   const handleStart = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setStatus('active');
+    setStatus("active");
     await startTracking();
   };
 
@@ -223,29 +263,31 @@ export default function ActiveWorkoutScreen() {
     stopAll();
     stepOffsetRef.current = stepsRef.current;
     lastCoordRef.current = null; // don't bridge the pause gap
-    setStatus('paused');
+    setStatus("paused");
   };
 
   const handleResume = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setStatus('active');
+    setStatus("active");
     await startTracking();
   };
 
   const handleFinish = () => {
     const dist = distanceRef.current;
     Alert.alert(
-      'Finish Workout?',
+      "Finish Workout?",
       `${dist.toFixed(2)} km · ${formatDuration(durationSeconds)}`,
       [
-        { text: 'Keep going', style: 'cancel' },
+        { text: "Keep going", style: "cancel" },
         {
-          text: 'Finish',
-          style: 'destructive',
+          text: "Finish",
+          style: "destructive",
           onPress: async () => {
             stopAll();
-            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            navigation.replace('LogWorkout', {
+            await Haptics.notificationAsync(
+              Haptics.NotificationFeedbackType.Success,
+            );
+            navigation.replace("LogWorkout", {
               squadId,
               goalId,
               prefill: {
@@ -263,10 +305,17 @@ export default function ActiveWorkoutScreen() {
   };
 
   const handleClose = () => {
-    if (status !== 'idle') {
-      Alert.alert('End Workout?', 'Your progress will be lost.', [
-        { text: 'Keep going', style: 'cancel' },
-        { text: 'Discard', style: 'destructive', onPress: () => { stopAll(); navigation.goBack(); } },
+    if (status !== "idle") {
+      Alert.alert("End Workout?", "Your progress will be lost.", [
+        { text: "Keep going", style: "cancel" },
+        {
+          text: "Discard",
+          style: "destructive",
+          onPress: () => {
+            stopAll();
+            navigation.goBack();
+          },
+        },
       ]);
     } else {
       navigation.goBack();
@@ -275,7 +324,8 @@ export default function ActiveWorkoutScreen() {
 
   // ── Derived ──────────────────────────────────────────────────
 
-  const accentColor = (theme.colors as any)[`workout_${type}`] ?? theme.colors.primary;
+  const accentColor =
+    (theme.colors as any)[`workout_${type}`] ?? theme.colors.primary;
   const mapStyle = theme.isDark ? DARK_MAP_STYLE : [];
 
   // ─────────────────────────────────────────────────────────────
@@ -289,7 +339,6 @@ export default function ActiveWorkoutScreen() {
           <MapView
             ref={mapRef}
             style={StyleSheet.absoluteFill}
-            provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
             customMapStyle={mapStyle}
             initialRegion={{
               ...currentLocation,
@@ -313,29 +362,59 @@ export default function ActiveWorkoutScreen() {
             )}
           </MapView>
         ) : (
-          <View style={[styles.mapFallback, { backgroundColor: theme.colors.surface_container }]}>
-            <Ionicons name="map-outline" size={40} color={theme.colors.on_surface_variant} />
-            <Text style={[textStyles.bodySm, { color: theme.colors.on_surface_variant, marginTop: spacing[2], textAlign: 'center', paddingHorizontal: spacing[6] }]}>
-              {locationError ?? 'Getting your location…'}
+          <View
+            style={[
+              styles.mapFallback,
+              { backgroundColor: theme.colors.surface_container },
+            ]}
+          >
+            <Ionicons
+              name="map-outline"
+              size={40}
+              color={theme.colors.on_surface_variant}
+            />
+            <Text
+              style={[
+                textStyles.bodySm,
+                {
+                  color: theme.colors.on_surface_variant,
+                  marginTop: spacing[2],
+                  textAlign: "center",
+                  paddingHorizontal: spacing[6],
+                },
+              ]}
+            >
+              {locationError ?? "Getting your location…"}
             </Text>
           </View>
         )}
 
         {/* Map top bar */}
-        <SafeAreaView style={styles.mapOverlay} edges={['top']}>
+        <SafeAreaView style={styles.mapOverlay} edges={["top"]}>
           <TouchableOpacity onPress={handleClose} style={styles.mapBtn}>
             <Ionicons name="close" size={22} color="#fff" />
           </TouchableOpacity>
 
-          <View style={[styles.typePill, { backgroundColor: 'rgba(0,0,0,0.55)' }]}>
-            <Text style={{ fontSize: 20 }}>{WORKOUT_EMOJI[type] ?? '⚡'}</Text>
-            <Text style={[textStyles.titleMd, { color: '#fff', marginLeft: spacing[2], textTransform: 'capitalize' }]}>
+          <View
+            style={[styles.typePill, { backgroundColor: "rgba(0,0,0,0.55)" }]}
+          >
+            <Text style={{ fontSize: 20 }}>{WORKOUT_EMOJI[type] ?? "⚡"}</Text>
+            <Text
+              style={[
+                textStyles.titleMd,
+                {
+                  color: "#fff",
+                  marginLeft: spacing[2],
+                  textTransform: "capitalize",
+                },
+              ]}
+            >
               {type}
             </Text>
           </View>
 
           {/* Live pulse when active */}
-          {status === 'active' && (
+          {status === "active" && (
             <View style={[styles.liveDot, { backgroundColor: accentColor }]}>
               <View style={styles.liveDotInner} />
             </View>
@@ -344,7 +423,9 @@ export default function ActiveWorkoutScreen() {
       </View>
 
       {/* ── Stats + controls panel ────────────────────────────── */}
-      <View style={[styles.panel, { backgroundColor: theme.colors.background }]}>
+      <View
+        style={[styles.panel, { backgroundColor: theme.colors.background }]}
+      >
         {/* Primary stats */}
         <View style={styles.primaryRow}>
           <StatBlock
@@ -355,7 +436,9 @@ export default function ActiveWorkoutScreen() {
             accent={accentColor}
             large
           />
-          <View style={[styles.divider, { backgroundColor: theme.colors.outline }]} />
+          <View
+            style={[styles.divider, { backgroundColor: theme.colors.outline }]}
+          />
           <StatBlock
             value={formatDuration(durationSeconds)}
             unit=""
@@ -389,40 +472,63 @@ export default function ActiveWorkoutScreen() {
 
         {/* Controls */}
         <View style={styles.controls}>
-          {status === 'idle' && (
+          {status === "idle" && (
             <TouchableOpacity
-              style={[styles.startBtn, { backgroundColor: accentColor, opacity: locationError ? 0.4 : 1 }]}
+              style={[
+                styles.startBtn,
+                {
+                  backgroundColor: accentColor,
+                  opacity: locationError ? 0.4 : 1,
+                },
+              ]}
               onPress={handleStart}
               disabled={!!locationError || !currentLocation}
             >
-              <Ionicons name="play" size={30} color="#fff" />
-              <Text style={[textStyles.titleLg, { color: '#fff', marginLeft: spacing[2] }]}>
+              <Ionicons name="play" size={30} color="black" />
+              <Text
+                style={[
+                  textStyles.titleLg,
+                  { color: "black", marginLeft: spacing[2] },
+                ]}
+              >
                 Start {type.charAt(0).toUpperCase() + type.slice(1)}
               </Text>
             </TouchableOpacity>
           )}
 
-          {status === 'active' && (
+          {status === "active" && (
             <View style={styles.dualControls}>
               <TouchableOpacity
-                style={[styles.roundBtn, { backgroundColor: theme.colors.surface_container_high }]}
+                style={[
+                  styles.roundBtn,
+                  { backgroundColor: theme.colors.surface_container_high },
+                ]}
                 onPress={handlePause}
               >
-                <Ionicons name="pause" size={28} color={theme.colors.on_surface} />
+                <Ionicons
+                  name="pause"
+                  size={28}
+                  color={theme.colors.on_surface}
+                />
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.finishBtn, { backgroundColor: accentColor }]}
                 onPress={handleFinish}
               >
                 <Ionicons name="stop" size={22} color="#fff" />
-                <Text style={[textStyles.titleLg, { color: '#fff', marginLeft: spacing[2] }]}>
+                <Text
+                  style={[
+                    textStyles.titleLg,
+                    { color: "#fff", marginLeft: spacing[2] },
+                  ]}
+                >
                   Finish
                 </Text>
               </TouchableOpacity>
             </View>
           )}
 
-          {status === 'paused' && (
+          {status === "paused" && (
             <View style={styles.dualControls}>
               <TouchableOpacity
                 style={[styles.roundBtn, { backgroundColor: accentColor }]}
@@ -431,11 +537,23 @@ export default function ActiveWorkoutScreen() {
                 <Ionicons name="play" size={28} color="#fff" />
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.finishBtn, { borderColor: theme.colors.error, borderWidth: 2, backgroundColor: 'transparent' }]}
+                style={[
+                  styles.finishBtn,
+                  {
+                    borderColor: theme.colors.error,
+                    borderWidth: 2,
+                    backgroundColor: "transparent",
+                  },
+                ]}
                 onPress={handleFinish}
               >
                 <Ionicons name="stop" size={22} color={theme.colors.error} />
-                <Text style={[textStyles.titleLg, { color: theme.colors.error, marginLeft: spacing[2] }]}>
+                <Text
+                  style={[
+                    textStyles.titleLg,
+                    { color: theme.colors.error, marginLeft: spacing[2] },
+                  ]}
+                >
                   End Run
                 </Text>
               </TouchableOpacity>
@@ -450,7 +568,12 @@ export default function ActiveWorkoutScreen() {
 // ─── StatBlock ────────────────────────────────────────────────
 
 function StatBlock({
-  value, unit, label, theme, accent, large,
+  value,
+  unit,
+  label,
+  theme,
+  accent,
+  large,
 }: {
   value: string;
   unit: string;
@@ -461,7 +584,7 @@ function StatBlock({
 }) {
   return (
     <View style={statStyles.block}>
-      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 3 }}>
+      <View style={{ flexDirection: "row", alignItems: "baseline", gap: 3 }}>
         <Text
           style={[
             large ? textStyles.displaySm : textStyles.headlineLg,
@@ -471,12 +594,22 @@ function StatBlock({
           {value}
         </Text>
         {unit ? (
-          <Text style={[textStyles.bodyMd, { color: theme.colors.on_surface_variant }]}>
+          <Text
+            style={[
+              textStyles.bodyMd,
+              { color: theme.colors.on_surface_variant },
+            ]}
+          >
             {unit}
           </Text>
         ) : null}
       </View>
-      <Text style={[textStyles.labelSm, { color: theme.colors.on_surface_variant, marginTop: 2 }]}>
+      <Text
+        style={[
+          textStyles.labelSm,
+          { color: theme.colors.on_surface_variant, marginTop: 2 },
+        ]}
+      >
         {label}
       </Text>
     </View>
@@ -486,22 +619,22 @@ function StatBlock({
 // ─── Styles ───────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#000' },
+  root: { flex: 1, backgroundColor: "#000" },
 
   // Map
   mapContainer: { height: SCREEN_H * 0.55 },
   mapFallback: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   mapOverlay: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: spacing[4],
     paddingTop: spacing[3],
     paddingBottom: spacing[3],
@@ -511,30 +644,30 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(0,0,0,0.55)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   typePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[1.5],
     borderRadius: radius.full,
   },
   liveDot: {
-    marginLeft: 'auto' as any,
+    marginLeft: "auto" as any,
     width: 12,
     height: 12,
     borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   liveDotInner: {
     width: 5,
     height: 5,
     borderRadius: 3,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     opacity: 0.8,
   },
 
@@ -546,8 +679,8 @@ const styles = StyleSheet.create({
     paddingBottom: spacing[4],
   },
   primaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: spacing[5],
   },
   divider: {
@@ -556,38 +689,38 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing[5],
   },
   secondaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: spacing[6],
   },
 
   // Controls
-  controls: { alignItems: 'center' },
+  controls: { alignItems: "center" },
   startBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: spacing[10],
     paddingVertical: spacing[4],
     borderRadius: radius.full,
     gap: spacing[2],
   },
   dualControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing[4],
   },
   roundBtn: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   finishBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: spacing[8],
     paddingVertical: spacing[4],
     borderRadius: radius.full,
@@ -596,5 +729,5 @@ const styles = StyleSheet.create({
 });
 
 const statStyles = StyleSheet.create({
-  block: { alignItems: 'flex-start' },
+  block: { alignItems: "flex-start" },
 });

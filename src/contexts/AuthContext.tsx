@@ -51,6 +51,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function syncUser() {
     if (!clerkUser) return;
     try {
+      // Read onboarding flag from local storage FIRST — before any network
+      // calls — so it's available even if Supabase is unreachable. This
+      // prevents the onboarding screen from briefly flashing for users who
+      // have already completed onboarding.
+      const stored = await SecureStore.getItemAsync(obKey(clerkUser.id));
+      setOnboardingComplete(stored === "true");
+
       // If a Supabase user already exists for this Clerk user, keep
       // their profile fields (display name, avatar, bio, etc.) as the
       // source of truth instead of overwriting from Clerk on every sync.
@@ -74,8 +81,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       }
       setDbUser(data);
-      const stored = await SecureStore.getItemAsync(obKey(clerkUser.id));
-      setOnboardingComplete(stored === "true");
 
       // Register push token and persist it so the backend can send pushes.
       // Non-critical — failure must not block auth flow.

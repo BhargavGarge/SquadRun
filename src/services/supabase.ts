@@ -43,7 +43,11 @@ console.log("SUPABASE URL:", process.env.EXPO_PUBLIC_SUPABASE_URL);
 export function createAuthedClient(accessToken: string) {
   return createClient(supabaseUrl, supabaseAnonKey, {
     global: { headers: { Authorization: `Bearer ${accessToken}` } },
-    auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false,
+    },
   });
 }
 
@@ -315,6 +319,81 @@ export const workoutsApi = {
     return data as Workout[];
   },
 
+  async getById(workoutId: string) {
+    const db = await getClient();
+    const { data, error } = await db
+      .from("workouts")
+      .select("*, user:users(*)")
+      .eq("id", workoutId)
+      .single();
+    if (error) throw error;
+    return data as Workout;
+  },
+
+  async saveSegments(
+    workoutId: string,
+    userId: string,
+    segments: Array<{
+      distanceKm: number;
+      startLat: number;
+      startLon: number;
+      endLat: number;
+      endLon: number;
+      durationSeconds: number;
+      paceMinPerKm: number;
+    }>,
+  ) {
+    const db = await getClient();
+    const rows = segments.map((seg) => ({
+      workout_id: workoutId,
+      user_id: userId,
+      distance_km: seg.distanceKm,
+      start_lat: seg.startLat,
+      start_lon: seg.startLon,
+      end_lat: seg.endLat,
+      end_lon: seg.endLon,
+      duration_seconds: seg.durationSeconds,
+      pace_min_per_km: seg.paceMinPerKm,
+    }));
+
+    const { error } = await db.from("workout_segments").insert(rows);
+    if (error) throw error;
+  },
+
+  async getSegmentPR(
+    userId: string,
+    distanceKm: number,
+    startLat: number,
+    startLon: number,
+    endLat: number,
+    endLon: number,
+  ) {
+    const db = await getClient();
+    // Fetch all segments of this distance for this user within geographic bounds
+    const latThreshold = 0.01; // ~1 km in latitude
+    const lonThreshold = 0.01; // ~1 km in longitude
+
+    const { data, error } = await db
+      .from("workout_segments")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("distance_km", distanceKm)
+      .gte("start_lat", startLat - latThreshold)
+      .lte("start_lat", startLat + latThreshold)
+      .gte("start_lon", startLon - lonThreshold)
+      .lte("start_lon", startLon + lonThreshold)
+      .gte("end_lat", endLat - latThreshold)
+      .lte("end_lat", endLat + latThreshold)
+      .gte("end_lon", endLon - lonThreshold)
+      .lte("end_lon", endLon + lonThreshold)
+      .order("pace_min_per_km", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data; // Returns the best (fastest) segment, or null if none exists
+  },
+
   async getMemberContributions(goalId: string) {
     const db = await getClient();
     // Returns sum per user_id for the goal
@@ -324,6 +403,25 @@ export const workoutsApi = {
         "user_id, distance_km, duration_minutes, calories, user:users(display_name, avatar_url)",
       )
       .eq("goal_id", goalId);
+    if (error) throw error;
+    return data ?? [];
+  },
+
+  async getUserStats(userId: string, startDate?: string, endDate?: string) {
+    const db = await getClient();
+    let query = db
+      .from("workouts")
+      .select("*, user:users(*)")
+      .eq("user_id", userId);
+
+    if (startDate) {
+      query = query.gte("logged_at", startDate);
+    }
+    if (endDate) {
+      query = query.lte("logged_at", endDate);
+    }
+
+    const { data, error } = await query.order("logged_at", { ascending: false });
     if (error) throw error;
     return data ?? [];
   },
@@ -410,20 +508,19 @@ export const storageApi = {
     const response = await fetch(localUri);
     const blob = await response.blob();
 
-    const ext = localUri.split('.').pop()?.toLowerCase()?.replace(/\?.*$/, '') ?? 'jpg';
+    const ext =
+      localUri.split(".").pop()?.toLowerCase()?.replace(/\?.*$/, "") ?? "jpg";
     // Folder = Clerk user ID so it matches auth.uid() in storage RLS policies
     const filePath = `${clerkUserId}/avatar.${ext}`;
 
-    const { error } = await db.storage
-      .from('avatars')
-      .upload(filePath, blob, {
-        contentType: blob.type || 'image/jpeg',
-        upsert: true,
-      });
+    const { error } = await db.storage.from("avatars").upload(filePath, blob, {
+      contentType: blob.type || "image/jpeg",
+      upsert: true,
+    });
 
     if (error) throw error;
 
-    const { data } = db.storage.from('avatars').getPublicUrl(filePath);
+    const { data } = db.storage.from("avatars").getPublicUrl(filePath);
     // Cache-bust so the new avatar appears immediately
     return `${data.publicUrl}?t=${Date.now()}`;
   },
@@ -438,7 +535,7 @@ export const storageApi = {
 export async function notifySquadMembers(
   squadId: string,
   actorId: string,
-  kind: import('../types').NotificationKind,
+  kind: import("../types").NotificationKind,
   title: string,
   body: string,
   data: Record<string, unknown> = {},
@@ -447,10 +544,10 @@ export async function notifySquadMembers(
 
   // Fetch all other members of this squad
   const { data: members, error } = await db
-    .from('squad_members')
-    .select('user_id')
-    .eq('squad_id', squadId)
-    .neq('user_id', actorId);
+    .from("squad_members")
+    .select("user_id")
+    .eq("squad_id", squadId)
+    .neq("user_id", actorId);
 
   if (error || !members?.length) return;
 
@@ -463,7 +560,7 @@ export async function notifySquadMembers(
     read: false,
   }));
 
-  await db.from('notifications').insert(rows);
+  await db.from("notifications").insert(rows);
 }
 
 // ── Real-time subscriptions ───────────────────────────────────

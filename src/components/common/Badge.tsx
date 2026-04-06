@@ -201,8 +201,8 @@ export default function Badge({
         animationDelay + 700,
         withRepeat(
           withSequence(
-            withTiming(0.7, { duration: 2200, easing: Easing.inOut(Easing.sine) }),
-            withTiming(0.15, { duration: 2200, easing: Easing.inOut(Easing.sine) }),
+            withTiming(0.7, { duration: 2200, easing: Easing.inOut(Easing.sin) }),
+            withTiming(0.15, { duration: 2200, easing: Easing.inOut(Easing.sin) }),
           ),
           -1,
           false,

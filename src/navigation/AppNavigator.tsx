@@ -3,25 +3,27 @@
 // Decides between Auth and Main flows based on Clerk auth state.
 // ─────────────────────────────────────────────────────────────
 
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { View, ActivityIndicator } from 'react-native';
+import React from "react";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { View, ActivityIndicator } from "react-native";
 
-import { useAuthContext } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
-import AuthNavigator from './AuthNavigator';
-import TabNavigator from './TabNavigator';
-import OnboardingScreen from '../screens/auth/OnboardingScreen';
+import { useAuthContext } from "../contexts/AuthContext";
+import { useTheme } from "../contexts/ThemeContext";
+import AuthNavigator from "./AuthNavigator";
+import TabNavigator from "./TabNavigator";
+import OnboardingScreen from "../screens/auth/OnboardingScreen";
 
 // Modal / overlay screens that can be pushed from anywhere
-import SquadDetailScreen from '../screens/squad/SquadDetailScreen';
-import CreateSquadScreen from '../screens/squad/CreateSquadScreen';
-import JoinSquadScreen from '../screens/squad/JoinSquadScreen';
-import CreateGoalScreen from '../screens/goals/CreateGoalScreen';
-import LogWorkoutScreen from '../screens/workout/LogWorkoutScreen';
-import ActiveWorkoutScreen from '../screens/workout/ActiveWorkoutScreen';
-import SettingsScreen from '../screens/settings/SettingsScreen';
+import SquadDetailScreen from "../screens/squad/SquadDetailScreen";
+import CreateSquadScreen from "../screens/squad/CreateSquadScreen";
+import JoinSquadScreen from "../screens/squad/JoinSquadScreen";
+import CreateGoalScreen from "../screens/goals/CreateGoalScreen";
+import LogWorkoutScreen from "../screens/workout/LogWorkoutScreen";
+import ActiveWorkoutScreen from "../screens/workout/ActiveWorkoutScreen";
+import WorkoutDetailScreen from "../screens/workout/WorkoutDetailScreen";
+import StatsScreen from "../screens/stats/StatsScreen";
+import SettingsScreen from "../screens/settings/SettingsScreen";
 
 const Root = createNativeStackNavigator();
 
@@ -36,8 +38,8 @@ export default function AppNavigator() {
         style={{
           flex: 1,
           backgroundColor: theme.colors.background,
-          alignItems: 'center',
-          justifyContent: 'center',
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
         <ActivityIndicator color={theme.colors.primary} size="large" />
@@ -70,14 +72,14 @@ export default function AppNavigator() {
           <Root.Screen
             name="Auth"
             component={AuthNavigator}
-            options={{ animationTypeForReplace: 'pop' }}
+            options={{ animationTypeForReplace: "pop" }}
           />
         ) : !onboardingComplete ? (
           // Authenticated but first-time user → Onboarding
           <Root.Screen
             name="Onboarding"
             component={OnboardingScreen}
-            options={{ gestureEnabled: false, animation: 'fade' }}
+            options={{ gestureEnabled: false, animation: "fade" }}
           />
         ) : (
           // Authenticated + onboarded → Main app
@@ -88,37 +90,62 @@ export default function AppNavigator() {
             <Root.Screen
               name="SquadDetail"
               component={SquadDetailScreen}
-              options={{ animation: 'slide_from_bottom' }}
+              options={{ animation: "slide_from_bottom" }}
             />
             <Root.Screen
               name="CreateSquad"
               component={CreateSquadScreen}
-              options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+              options={{
+                presentation: "modal",
+                animation: "slide_from_bottom",
+              }}
             />
             <Root.Screen
               name="JoinSquad"
               component={JoinSquadScreen}
-              options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+              options={{
+                presentation: "modal",
+                animation: "slide_from_bottom",
+              }}
             />
             <Root.Screen
               name="CreateGoal"
               component={CreateGoalScreen}
-              options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+              options={{
+                presentation: "modal",
+                animation: "slide_from_bottom",
+              }}
             />
             <Root.Screen
               name="LogWorkout"
               component={LogWorkoutScreen}
-              options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+              options={{
+                presentation: "modal",
+                animation: "slide_from_bottom",
+              }}
             />
             <Root.Screen
               name="ActiveWorkout"
               component={ActiveWorkoutScreen}
-              options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+              options={{
+                presentation: "fullScreenModal",
+                animation: "slide_from_bottom",
+              }}
             />
             <Root.Screen
               name="Settings"
               component={SettingsScreen}
-              options={{ animation: 'slide_from_right' }}
+              options={{ animation: "slide_from_right" }}
+            />
+            <Root.Screen
+              name="WorkoutDetail"
+              component={WorkoutDetailScreen}
+              options={{ animation: "slide_from_bottom" }}
+            />
+            <Root.Screen
+              name="Stats"
+              component={StatsScreen}
+              options={{ animation: "slide_from_bottom" }}
             />
           </>
         )}

@@ -99,6 +99,7 @@ export default function Avatar({
     >
       {uri ? (
         <Image
+          key={uri}
           source={{ uri }}
           style={{ width: size, height: size, borderRadius: size / 2 }}
         />
