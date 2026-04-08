@@ -601,6 +601,7 @@ function WorkoutActivityCard({ item }: WorkoutActivityCardProps) {
   const navigation = useNavigation<any>();
 
   const workout: any = item.workout ?? (item.payload as any) ?? {};
+  const workoutId: string | undefined = workout.id ?? workout.workout_id;
   const type: WorkoutType = (workout.type as WorkoutType) ?? "other";
   const distanceKm =
     typeof workout.distance_km === "number" ? workout.distance_km : null;
@@ -642,8 +643,8 @@ function WorkoutActivityCard({ item }: WorkoutActivityCardProps) {
   });
 
   const handlePress = () => {
-    if (workout.id) {
-      navigation.navigate("WorkoutDetail", { workoutId: workout.id });
+    if (workoutId) {
+      navigation.navigate("WorkoutDetail", { workoutId });
     }
   };
 

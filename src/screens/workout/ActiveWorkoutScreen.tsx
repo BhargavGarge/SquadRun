@@ -16,7 +16,7 @@ import {
   Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import MapView, { Polyline } from "react-native-maps";
+import MapView, { Polyline, Marker } from "react-native-maps";
 import * as Location from "expo-location";
 import { Pedometer } from "expo-sensors/build/Pedometer";
 import { Ionicons } from "@expo/vector-icons";
@@ -24,9 +24,14 @@ import * as Haptics from "expo-haptics";
 import { useNavigation, useRoute } from "@react-navigation/native";
 
 import { useTheme } from "../../contexts/ThemeContext";
+import { useAuthContext } from "../../contexts/AuthContext";
 import { textStyles } from "../../theme/typography";
 import { spacing, radius } from "../../theme/spacing";
-import type { WorkoutType, RouteCoord } from "../../types";
+import {
+  liveLocationApi,
+  subscribeToLiveLocations,
+} from "../../services/supabase";
+import type { WorkoutType, RouteCoord, LiveLocation } from "../../types";
 
 const { height: SCREEN_H } = Dimensions.get("window");
 
@@ -128,6 +133,7 @@ type TrackingStatus = "idle" | "active" | "paused";
 
 export default function ActiveWorkoutScreen() {
   const { theme } = useTheme();
+  const { dbUser } = useAuthContext();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { type = "run", squadId, goalId } = route.params ?? {};
@@ -143,6 +149,9 @@ export default function ActiveWorkoutScreen() {
   } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [pedometerAvailable, setPedometerAvailable] = useState(false);
+  const [squadLocations, setSquadLocations] = useState<
+    Record<string, LiveLocation>
+  >({});
 
   const mapRef = useRef<MapView>(null);
   const locationSubRef = useRef<Location.LocationSubscription | null>(null);
@@ -154,6 +163,14 @@ export default function ActiveWorkoutScreen() {
   const distanceRef = useRef(0);
   const stepOffsetRef = useRef(0);
   const stepsRef = useRef(0);
+  const lastBroadcastRef = useRef(0);
+
+  const clearLiveLocation = useCallback(() => {
+    if (!dbUser?.id || !squadId) return;
+    liveLocationApi.clearForUser(dbUser.id, squadId).catch(() => {
+      // Non-critical cleanup failure
+    });
+  }, [dbUser?.id, squadId]);
 
   // ── Permission + initial location on mount ──────────────────
   useEffect(() => {
@@ -180,9 +197,64 @@ export default function ActiveWorkoutScreen() {
       const available = await Pedometer.isAvailableAsync();
       setPedometerAvailable(available);
     })();
-
-    return () => stopAll();
   }, []);
+
+  useEffect(() => {
+    return () => {
+      stopAll();
+      clearLiveLocation();
+    };
+  }, [stopAll, clearLiveLocation]);
+
+  useEffect(() => {
+    if (!squadId || !dbUser?.id) return;
+
+    let isMounted = true;
+
+    (async () => {
+      try {
+        const rows = await liveLocationApi.getBySquad(squadId);
+        if (!isMounted) return;
+        const map: Record<string, LiveLocation> = {};
+        for (const row of rows) {
+          if (row.user_id === dbUser.id) continue;
+          map[row.user_id] = row;
+        }
+        setSquadLocations(map);
+      } catch {
+        // Initial live locations are non-critical
+      }
+    })();
+
+    const unsubscribe = subscribeToLiveLocations(
+      squadId,
+      (loc) => {
+        if (loc.user_id === dbUser.id) return;
+        setSquadLocations((prev) => ({
+          ...prev,
+          [loc.user_id]: loc,
+        }));
+      },
+      (id) => {
+        setSquadLocations((prev) => {
+          const next = { ...prev };
+          for (const key of Object.keys(next)) {
+            if (next[key].id === id) {
+              delete next[key];
+              break;
+            }
+          }
+          return next;
+        });
+      },
+    );
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+      setSquadLocations({});
+    };
+  }, [squadId, dbUser?.id]);
 
   // ── Core tracking helpers ────────────────────────────────────
 
@@ -231,6 +303,26 @@ export default function ActiveWorkoutScreen() {
         }
         lastCoordRef.current = newCoord;
 
+        if (dbUser?.id && squadId) {
+          const now = Date.now();
+          if (now - lastBroadcastRef.current > 3000) {
+            lastBroadcastRef.current = now;
+            liveLocationApi
+              .upsertLocation({
+                userId: dbUser.id,
+                squadId,
+                workoutId: null,
+                lat: newCoord.latitude,
+                lon: newCoord.longitude,
+                heading: loc.coords.heading ?? null,
+                speedMps: loc.coords.speed ?? null,
+              })
+              .catch(() => {
+                // Ignore transient network errors during live sync
+              });
+          }
+        }
+
         // Keep map centered
         mapRef.current?.animateToRegion(
           { ...newCoord, latitudeDelta: 0.004, longitudeDelta: 0.004 },
@@ -248,7 +340,7 @@ export default function ActiveWorkoutScreen() {
         setSteps(total);
       });
     }
-  }, [pedometerAvailable]);
+  }, [pedometerAvailable, dbUser?.id, squadId]);
 
   // ── Controls ─────────────────────────────────────────────────
 
@@ -284,6 +376,7 @@ export default function ActiveWorkoutScreen() {
           style: "destructive",
           onPress: async () => {
             stopAll();
+            clearLiveLocation();
             await Haptics.notificationAsync(
               Haptics.NotificationFeedbackType.Success,
             );
@@ -313,6 +406,7 @@ export default function ActiveWorkoutScreen() {
           style: "destructive",
           onPress: () => {
             stopAll();
+            clearLiveLocation();
             navigation.goBack();
           },
         },
@@ -327,6 +421,7 @@ export default function ActiveWorkoutScreen() {
   const accentColor =
     (theme.colors as any)[`workout_${type}`] ?? theme.colors.primary;
   const mapStyle = theme.isDark ? DARK_MAP_STYLE : [];
+  const liveSquadCount = Object.keys(squadLocations).length;
 
   // ─────────────────────────────────────────────────────────────
   return (
@@ -360,6 +455,29 @@ export default function ActiveWorkoutScreen() {
                 lineJoin="round"
               />
             )}
+            {squadId &&
+              Object.values(squadLocations).map((loc) => (
+                <Marker
+                  key={loc.user_id}
+                  coordinate={{
+                    latitude: loc.lat,
+                    longitude: loc.lon,
+                  }}
+                  tracksViewChanges={false}
+                >
+                  <View style={styles.squadMarker}>
+                    <View
+                      style={[
+                        styles.squadMarkerDot,
+                        { backgroundColor: accentColor },
+                      ]}
+                    />
+                    <Text style={styles.squadMarkerLabel} numberOfLines={1}>
+                      {loc.user?.display_name ?? "Squadmate"}
+                    </Text>
+                  </View>
+                </Marker>
+              ))}
           </MapView>
         ) : (
           <View
@@ -426,6 +544,40 @@ export default function ActiveWorkoutScreen() {
       <View
         style={[styles.panel, { backgroundColor: theme.colors.background }]}
       >
+        {/* Live squad run pill */}
+        {squadId && dbUser?.id && (
+          <View style={styles.livePillRow}>
+            <View
+              style={[
+                styles.livePill,
+                { backgroundColor: theme.colors.surface_container_high },
+              ]}
+            >
+              <View
+                style={[styles.livePillDot, { backgroundColor: accentColor }]}
+              />
+              <Text
+                style={[textStyles.labelSm, { color: theme.colors.on_surface }]}
+              >
+                LIVE SQUAD RUN
+              </Text>
+              {liveSquadCount > 0 && (
+                <Text
+                  style={[
+                    textStyles.labelSm,
+                    {
+                      color: theme.colors.on_surface_variant,
+                      marginLeft: spacing[1],
+                    },
+                  ]}
+                >
+                  · {liveSquadCount} online
+                </Text>
+              )}
+            </View>
+          </View>
+        )}
+
         {/* Primary stats */}
         <View style={styles.primaryRow}>
           <StatBlock
@@ -671,12 +823,49 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
 
+  squadMarker: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: "rgba(0,0,0,0.75)",
+  },
+  squadMarkerDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  squadMarkerLabel: {
+    ...textStyles.labelSm,
+    color: "#fff",
+    maxWidth: 80,
+  },
+
   // Stats panel
   panel: {
     flex: 1,
     paddingTop: spacing[5],
     paddingHorizontal: spacing[5],
     paddingBottom: spacing[4],
+  },
+  livePillRow: {
+    alignItems: "center",
+    marginBottom: spacing[4],
+  },
+  livePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: radius.full,
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[1.5],
+  },
+  livePillDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: spacing[2],
   },
   primaryRow: {
     flexDirection: "row",

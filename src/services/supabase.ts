@@ -6,6 +6,12 @@
 import { createClient } from "@supabase/supabase-js";
 import * as SecureStore from "expo-secure-store";
 import Constants from "expo-constants";
+import * as FileSystem from "expo-file-system/legacy";
+import { Platform } from "react-native";
+
+// Fallback config for development — mirrors app.json but committed as config.json
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const appConfig = require("../../config.json");
 
 // Custom storage adapter using expo-secure-store
 // Supabase client will use this to persist the auth session securely
@@ -21,60 +27,124 @@ const ExpoSecureStoreAdapter = {
   },
 };
 
-const supabaseUrl =
-  Constants.expoConfig?.extra?.supabaseUrl ??
-  process.env.EXPO_PUBLIC_SUPABASE_URL ??
-  "";
+// ── Notification helpers ──────────────────────────────────────
 
-const supabaseAnonKey =
-  Constants.expoConfig?.extra?.supabaseAnonKey ??
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ??
-  "";
+// Small helper to convert base64 strings to ArrayBuffer for React Native uploads
+const BASE64_CHARS =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const clean = base64.replace(/[^A-Za-z0-9+/=]/g, "");
+  const len = clean.length;
+  if (!len) return new ArrayBuffer(0);
+
+  let padding = 0;
+  if (clean.endsWith("==")) padding = 2;
+  else if (clean.endsWith("=")) padding = 1;
+
+  const bytesLength = (len * 3) / 4 - padding;
+  const buffer = new ArrayBuffer(bytesLength);
+  const bytes = new Uint8Array(buffer);
+
+  let p = 0;
+  for (let i = 0; i < len; i += 4) {
+    const enc1 = BASE64_CHARS.indexOf(clean[i]);
+    const enc2 = BASE64_CHARS.indexOf(clean[i + 1]);
+    const enc3 = BASE64_CHARS.indexOf(clean[i + 2]);
+    const enc4 = BASE64_CHARS.indexOf(clean[i + 3]);
+
+    const chr1 = (enc1 << 2) | (enc2 >> 4);
+    const chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
+    const chr3 = ((enc3 & 3) << 6) | enc4;
+
+    bytes[p++] = chr1;
+    if (clean[i + 2] !== "=" && enc3 !== 64) {
+      bytes[p++] = chr2;
+    }
+    if (clean[i + 3] !== "=" && enc4 !== 64) {
+      bytes[p++] = chr3;
+    }
+  }
+
+  return buffer;
+}
+
+function getImageContentType(ext: string): string {
+  const lower = ext.toLowerCase();
+  if (lower === "jpg" || lower === "jpeg") return "image/jpeg";
+  if (lower === "png") return "image/png";
+  if (lower === "webp") return "image/webp";
+  if (lower === "heic" || lower === "heif") return "image/heic";
+  return "application/octet-stream";
+}
+
+// ─── Supabase singleton + Clerk bridge ──────────────────────
+
+type TokenProvider = (() => Promise<string | null>) | null;
+
+let tokenProvider: TokenProvider = null;
+
+export function setTokenProvider(provider: TokenProvider) {
+  tokenProvider = provider;
+}
+
+const expoExtra: any =
+  // Newer Expo Runtime (EAS, dev client)
+  (Constants as any).expoConfig?.extra ??
+  // Classic manifest (Expo Go)
+  (Constants as any).manifest?.extra ??
+  // Local config.json fallback
+  (appConfig as any)?.expo?.extra ??
+  {};
+
+const supabaseUrl: string | undefined =
+  expoExtra.supabaseUrl ?? process.env.EXPO_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey: string | undefined =
+  expoExtra.supabaseAnonKey ?? process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
+  // Keep this non-fatal so the app can still render error boundaries
   console.warn(
-    "[Supabase] Missing credentials. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY.",
+    "[supabase] Missing supabaseUrl/supabaseAnonKey in Expo config extra — Supabase calls will fail until configured.",
   );
 }
-console.log("SUPABASE URL:", process.env.EXPO_PUBLIC_SUPABASE_URL);
 
-// Returns a one-off client authenticated with a Clerk JWT.
-// Use this for operations that need RLS to recognise the user.
-export function createAuthedClient(accessToken: string) {
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    global: { headers: { Authorization: `Bearer ${accessToken}` } },
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-      detectSessionInUrl: false,
-    },
-  });
-}
+const supabase =
+  supabaseUrl && supabaseAnonKey
+    ? createClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          // Clerk is the source of truth for auth; we just forward its JWT.
+          persistSession: false,
+        },
+        global: {
+          fetch: async (input, init) => {
+            const headers = new Headers(init?.headers ?? {});
 
-// Module-level token provider — set by AuthContext once Clerk is ready.
-// All API helpers call getClient() so every request carries the Clerk JWT.
-let _tokenProvider: (() => Promise<string | null>) | null = null;
+            if (tokenProvider) {
+              try {
+                const token = await tokenProvider();
+                if (token) {
+                  headers.set("Authorization", `Bearer ${token}`);
+                }
+              } catch {
+                // Ignore token retrieval errors — request will just be unauthenticated.
+              }
+            }
 
-export function setTokenProvider(fn: (() => Promise<string | null>) | null) {
-  _tokenProvider = fn;
-}
+            return fetch(input as any, { ...(init ?? {}), headers });
+          },
+        },
+      })
+    : (null as any);
 
 async function getClient() {
-  if (_tokenProvider) {
-    const token = await _tokenProvider();
-    if (token) return createAuthedClient(token);
+  if (!supabase) {
+    throw new Error(
+      "Supabase client is not configured. Check supabaseUrl/supabaseAnonKey in config.json.",
+    );
   }
   return supabase;
 }
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    storage: ExpoSecureStoreAdapter,
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false,
-  },
-});
 
 // ─── Typed query helpers ─────────────────────────────────────
 
@@ -86,6 +156,9 @@ import type {
   Workout,
   ActivityItem,
   AppNotification,
+  WorkoutComment,
+  WorkoutLike,
+  LiveLocation,
 } from "../types";
 
 // ── Users ────────────────────────────────────────────────────
@@ -421,7 +494,9 @@ export const workoutsApi = {
       query = query.lte("logged_at", endDate);
     }
 
-    const { data, error } = await query.order("logged_at", { ascending: false });
+    const { data, error } = await query.order("logged_at", {
+      ascending: false,
+    });
     if (error) throw error;
     return data ?? [];
   },
@@ -504,25 +579,234 @@ export const storageApi = {
   async uploadAvatar(clerkUserId: string, localUri: string): Promise<string> {
     const db = await getClient();
 
-    // Fetch the file as a blob so we can upload it
-    const response = await fetch(localUri);
-    const blob = await response.blob();
-
     const ext =
       localUri.split(".").pop()?.toLowerCase()?.replace(/\?.*$/, "") ?? "jpg";
+    const contentType = getImageContentType(ext);
     // Folder = Clerk user ID so it matches auth.uid() in storage RLS policies
     const filePath = `${clerkUserId}/avatar.${ext}`;
 
-    const { error } = await db.storage.from("avatars").upload(filePath, blob, {
-      contentType: blob.type || "image/jpeg",
-      upsert: true,
-    });
+    let error;
+    if (localUri.startsWith("file:") && Platform.OS !== "web") {
+      const base64 = await FileSystem.readAsStringAsync(localUri, {
+        encoding: "base64" as any,
+      });
+      const arrayBuffer = base64ToArrayBuffer(base64);
+      ({ error } = await db.storage
+        .from("avatars")
+        .upload(filePath, arrayBuffer, {
+          contentType,
+          upsert: true,
+        }));
+    } else {
+      const response = await fetch(localUri);
+      const blob = await response.blob();
+      ({ error } = await db.storage.from("avatars").upload(filePath, blob, {
+        contentType: (blob as any).type || contentType,
+        upsert: true,
+      }));
+    }
 
     if (error) throw error;
 
     const { data } = db.storage.from("avatars").getPublicUrl(filePath);
     // Cache-bust so the new avatar appears immediately
     return `${data.publicUrl}?t=${Date.now()}`;
+  },
+
+  /**
+   * Upload a workout photo to the `workout-photos` bucket.
+   * Path is namespaced by Clerk user ID so storage RLS can match auth.uid().
+   */
+  async uploadWorkoutPhoto(
+    clerkUserId: string,
+    localUri: string,
+  ): Promise<string> {
+    const db = await getClient();
+    const ext =
+      localUri.split(".").pop()?.toLowerCase()?.replace(/\?.*$/, "") ?? "jpg";
+    const contentType = getImageContentType(ext);
+    const filename = `${Date.now()}.${ext}`;
+    const filePath = `${clerkUserId}/${filename}`;
+
+    let error;
+    if (localUri.startsWith("file:") && Platform.OS !== "web") {
+      const base64 = await FileSystem.readAsStringAsync(localUri, {
+        encoding: "base64" as any,
+      });
+      const arrayBuffer = base64ToArrayBuffer(base64);
+      ({ error } = await db.storage
+        .from("workout-photos")
+        .upload(filePath, arrayBuffer, {
+          contentType,
+          upsert: true,
+        }));
+    } else {
+      const response = await fetch(localUri);
+      const blob = await response.blob();
+      ({ error } = await db.storage
+        .from("workout-photos")
+        .upload(filePath, blob, {
+          contentType: (blob as any).type || contentType,
+          upsert: true,
+        }));
+    }
+
+    if (error) throw error;
+
+    const { data } = db.storage.from("workout-photos").getPublicUrl(filePath);
+    return `${data.publicUrl}?t=${Date.now()}`;
+  },
+};
+
+// ── Workout Social (comments, likes) ────────────────────────
+
+export const workoutSocialApi = {
+  async getSummary(workoutId: string, userId?: string) {
+    const db = await getClient();
+
+    const [{ count: likesCount }, { count: commentsCount }] = await Promise.all(
+      [
+        db
+          .from("workout_likes")
+          .select("*", { count: "exact", head: true })
+          .eq("workout_id", workoutId),
+        db
+          .from("workout_comments")
+          .select("*", { count: "exact", head: true })
+          .eq("workout_id", workoutId),
+      ],
+    );
+
+    let isLikedByMe = false;
+    if (userId) {
+      const { data: like } = await db
+        .from("workout_likes")
+        .select("id")
+        .eq("workout_id", workoutId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      isLikedByMe = !!like;
+    }
+
+    return {
+      likesCount: likesCount ?? 0,
+      commentsCount: commentsCount ?? 0,
+      isLikedByMe,
+    };
+  },
+
+  async getComments(workoutId: string): Promise<WorkoutComment[]> {
+    const db = await getClient();
+    const { data, error } = await db
+      .from("workout_comments")
+      .select("*, user:users(*)")
+      .eq("workout_id", workoutId)
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    return data as any as WorkoutComment[];
+  },
+
+  async addComment(
+    workoutId: string,
+    userId: string,
+    body: string,
+  ): Promise<WorkoutComment> {
+    const db = await getClient();
+    const { data, error } = await db
+      .from("workout_comments")
+      .insert({ workout_id: workoutId, user_id: userId, body })
+      .select("*, user:users(*)")
+      .single();
+    if (error) throw error;
+    return data as any as WorkoutComment;
+  },
+
+  async deleteComment(commentId: string) {
+    const db = await getClient();
+    const { error } = await db
+      .from("workout_comments")
+      .delete()
+      .eq("id", commentId);
+    if (error) throw error;
+  },
+
+  async like(workoutId: string, userId: string): Promise<WorkoutLike> {
+    const db = await getClient();
+    const { data, error } = await db
+      .from("workout_likes")
+      .upsert(
+        { workout_id: workoutId, user_id: userId },
+        {
+          onConflict: "workout_id,user_id",
+        },
+      )
+      .select()
+      .single();
+    if (error) throw error;
+    return data as WorkoutLike;
+  },
+
+  async unlike(workoutId: string, userId: string) {
+    const db = await getClient();
+    const { error } = await db
+      .from("workout_likes")
+      .delete()
+      .eq("workout_id", workoutId)
+      .eq("user_id", userId);
+    if (error) throw error;
+  },
+};
+
+// ── Live squad locations (GPS sync) ─────────────────────────
+
+export const liveLocationApi = {
+  async upsertLocation(params: {
+    userId: string;
+    squadId: string;
+    workoutId?: string | null;
+    lat: number;
+    lon: number;
+    heading?: number | null;
+    speedMps?: number | null;
+  }): Promise<LiveLocation> {
+    const db = await getClient();
+    const { data, error } = await db
+      .from("live_locations")
+      .upsert(
+        {
+          user_id: params.userId,
+          squad_id: params.squadId,
+          workout_id: params.workoutId ?? null,
+          lat: params.lat,
+          lon: params.lon,
+          heading: params.heading ?? null,
+          speed_mps: params.speedMps ?? null,
+        },
+        { onConflict: "user_id,squad_id" },
+      )
+      .select("*, user:users(*)")
+      .single();
+
+    if (error) throw error;
+    return data as any as LiveLocation;
+  },
+
+  async clearForUser(userId: string, squadId?: string) {
+    const db = await getClient();
+    let query = db.from("live_locations").delete().eq("user_id", userId);
+    if (squadId) query = query.eq("squad_id", squadId);
+    const { error } = await query;
+    if (error) throw error;
+  },
+
+  async getBySquad(squadId: string): Promise<LiveLocation[]> {
+    const db = await getClient();
+    const { data, error } = await db
+      .from("live_locations")
+      .select("*, user:users(*)")
+      .eq("squad_id", squadId);
+    if (error) throw error;
+    return data as any as LiveLocation[];
   },
 };
 
@@ -583,7 +867,7 @@ export function subscribeToSquadWorkouts(
         table: "workouts",
         filter: `squad_id=eq.${squadId}`,
       },
-      (payload) => onInsert(payload.new as Workout),
+      (payload: any) => onInsert(payload.new as Workout),
     )
     .subscribe();
 
@@ -609,9 +893,61 @@ export function subscribeToActivityFeed(
         table: "activity_feed",
         filter: `squad_id=eq.${squadId}`,
       },
-      (payload) => onInsert(payload.new as ActivityItem),
+      (payload: any) => onInsert(payload.new as ActivityItem),
     )
     .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
+
+/**
+ * Subscribe to live squad GPS locations for a squad.
+ * Emits on both INSERT and UPDATE; optionally on DELETE.
+ */
+export function subscribeToLiveLocations(
+  squadId: string,
+  onUpsert: (loc: LiveLocation) => void,
+  onDelete?: (id: string) => void,
+) {
+  const channel = supabase
+    .channel(`live-locations-${squadId}-${Date.now()}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "live_locations",
+        filter: `squad_id=eq.${squadId}`,
+      },
+      (payload: any) => onUpsert(payload.new as LiveLocation),
+    )
+    .on(
+      "postgres_changes",
+      {
+        event: "UPDATE",
+        schema: "public",
+        table: "live_locations",
+        filter: `squad_id=eq.${squadId}`,
+      },
+      (payload: any) => onUpsert(payload.new as LiveLocation),
+    );
+
+  if (onDelete) {
+    channel.on(
+      "postgres_changes",
+      {
+        event: "DELETE",
+        schema: "public",
+        table: "live_locations",
+        filter: `squad_id=eq.${squadId}`,
+      },
+      (payload: any) => onDelete((payload.old as any).id as string),
+    );
+  }
+
+  channel.subscribe();
 
   return () => {
     supabase.removeChannel(channel);

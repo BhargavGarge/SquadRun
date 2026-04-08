@@ -47,6 +47,19 @@ export default function StatsScreen() {
   const navigation = useNavigation<any>();
   const { workouts } = useSquadStore();
 
+  const distanceUnit = dbUser?.preferred_units === "miles" ? "miles" : "km";
+
+  const formatPaceForUnit = (paceMinPerKm: number) => {
+    if (!paceMinPerKm || paceMinPerKm <= 0) return "--";
+    if (distanceUnit === "km") {
+      return formatPace(paceMinPerKm);
+    }
+    const paceMinPerMile = paceMinPerKm * 1.60934;
+    const min = Math.floor(paceMinPerMile);
+    const sec = Math.round((paceMinPerMile % 1) * 60);
+    return `${min}:${String(sec).padStart(2, "0")}/mi`;
+  };
+
   const [stats, setStats] = useState<{
     today: StatsPeriod;
     week: StatsPeriod;
@@ -108,6 +121,12 @@ export default function StatsScreen() {
         : selectedPeriod === "month"
           ? "THIS MONTH"
           : "THIS YEAR";
+
+  const distanceValue =
+    distanceUnit === "km"
+      ? currentStats.distance_km
+      : currentStats.distance_km * 0.621371;
+  const distanceSuffix = distanceUnit === "km" ? "km" : "mi";
 
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
@@ -184,7 +203,7 @@ export default function StatsScreen() {
           <View style={styles.statsGrid}>
             <StatCard
               label="Distance"
-              value={`${currentStats.distance_km.toFixed(1)} km`}
+              value={`${distanceValue.toFixed(1)} ${distanceSuffix}`}
               theme={theme}
             />
             <StatCard
@@ -205,14 +224,14 @@ export default function StatsScreen() {
             {currentStats.avg_pace_min_per_km > 0 && (
               <StatCard
                 label="Avg Pace"
-                value={formatPace(currentStats.avg_pace_min_per_km)}
+                value={formatPaceForUnit(currentStats.avg_pace_min_per_km)}
                 theme={theme}
               />
             )}
             {currentStats.best_pace_min_per_km > 0 && (
               <StatCard
                 label="Best Pace"
-                value={formatPace(currentStats.best_pace_min_per_km)}
+                value={formatPaceForUnit(currentStats.best_pace_min_per_km)}
                 theme={theme}
               />
             )}

@@ -11,9 +11,7 @@
       "resizeMode": "contain",
       "backgroundColor": "black"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.squadgoals.app",
@@ -60,9 +58,9 @@
     ],
     "scheme": "squad-goals",
     "extra": {
-      "clerkPublishableKey": "YOUR_CLERK_PUBLISHABLE_KEY",
-      "supabaseUrl": "YOUR_SUPABASE_URL",
-      "supabaseAnonKey": "YOUR_SUPABASE_ANON_KEY",
+      "clerkPublishableKey": "pk_test_bWludC1jYXRmaXNoLTMxLmNsZXJrLmFjY291bnRzLmRldiQ",
+      "supabaseUrl": "https://egocuccazbioynqfptdf.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVnb2N1Y2NhemJpb3lucWZwdGRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNjg3ODIsImV4cCI6MjA5MDY0NDc4Mn0.CJh4m55EBQkAxL7STbaS8pBopLmrunMb5Ka-NrVUwIs",
       "eas": {
         "projectId": "YOUR_EAS_PROJECT_ID"
       }

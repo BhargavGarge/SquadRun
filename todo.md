@@ -1,16 +1,17 @@
 TODO — Strava-Parity Features (High Priority)
-Feature Status Impact Effort
-GPS Route Recording Partial Map view, route playback 🔴 High
-Route Map Display ❌ Not built Visual route on map 🔴 High
-Best Segments ❌ Not built "PR" markers on routes 🟠 Medium
-Performance Metrics ❌ Not built Pace, heart rate, effort zones 🟠 Medium
-Activity Photos ❌ Partial Upload photo with workout 🟡 Low
-Comments on Activity ❌ Not built Social engagement 🟡 Low
-Likes/Kudos ❌ Not built Engagement indicator 🟡 Low
-Leaderboard ❌ Not built Top performers in squad 🟡 Low
-Workout Export ❌ Not built Share to Strava/Apple Health 🟠 Medium
-Calendar View ❌ Not built Monthly activity heatmap 🟡 Low
-Historical Data ❌ Partial Old workouts accessible but not aggregated 🔴 High
+Feature | Status | Notes | Impact | Effort
+--- | --- | --- | --- | ---
+GPS Route Recording | ✅ Done | ActiveWorkoutScreen records GPS route + steps and passes route_coords into workout log | 🔴 High | 🔴 High
+Route Map Display | ✅ Done | Workout detail shows route on map; activity cards show mini route preview | 🔴 High | 🔴 High
+Best Segments | ✅ Done | Best segments detected per workout with PR flag on WorkoutDetailScreen | 🟠 Medium | 🟠 Medium
+Performance Metrics | ❌ Not built | No heart-rate / zones yet; only basic pace + calories estimate | 🟠 Medium | 🟠 Medium
+Activity Photos | ✅ Done | Photo upload on LogWorkout + display on WorkoutDetail; stored in workout-photos bucket | 🟡 Low | 🟡 Low
+Comments on Activity | ✅ Done | Single comment thread per workout on WorkoutDetail (with keyboard-safe input) | 🟡 Low | 🟡 Low
+Likes/Kudos | ✅ Done | Like/unlike (kudos) on WorkoutDetail with counts and per-user state | 🟡 Low | 🟡 Low
+Leaderboard | 🟠 Partial | SquadDetailScreen has goal-based member leaderboard + "Your position" summary; no global app-wide leaderboard | 🟡 Low | 🟡 Low
+Workout Export | ❌ Not built | No Strava/Apple Health export yet | 🟠 Medium | 🟠 Medium
+Calendar View | ✅ Done | Stats screen shows monthly activity heatmap | 🟡 Low | 🟡 Low
+Historical Data | ✅ Done | Stats screen aggregates past workouts; history list + heatmap; can refine further later | 🔴 High | 🔴 High
 🚀 UNIQUE SQUAD-RUN FEATURES (Squad Goals Exclusive)
 These differentiate from Strava:
 
@@ -52,18 +53,18 @@ Trends: "squad pace improving week-over-week"
 📋 RECOMMENDED NEXT STEPS (Priority Order)
 Phase 2 (Core Strava Parity):
 
-GPS route playback on map (use react-native-maps)
-Historical activity data aggregation (stats, calendar)
-Best segments detection
-Workout comments (single comment thread per activity)
+✅ GPS route playback on map (use react-native-maps)
+✅ Historical activity data aggregation (stats, calendar)
+✅ Best segments detection (per-workout UI with PR badge)
+✅ Workout comments (single comment thread per activity)
 Phase 3 (Squad Differentiation):
 
-Live squad sync during run (GPS feed real-time)
-Collective goal breakdowns + leaderboard
-Squad challenges UI
+🟠 Live squad sync during run (GPS feed real-time) — implemented but **not fully tested on 2 devices yet**
+🟠 Collective goal breakdowns + leaderboard — core goal bar + leaderboard shipped; room to expand insights
+🟠 Squad challenges UI — squad-level weekly challenges tab added; logic is derived client-side from recent workouts
 Phase 4 (Polish):
 
-Calendar heatmap
-Likes/kudos system
-Photo uploads
-Settings refinement
+✅ Calendar heatmap
+✅ Likes/kudos system
+✅ Photo uploads
+✅ Settings refinement
