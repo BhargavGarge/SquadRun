@@ -566,6 +566,133 @@ export const notificationsApi = {
   },
 };
 
+// ── Saved Routes ─────────────────────────────────────────────
+
+export type SavedRoute = {
+  id: string;
+  squad_id: string;
+  saved_by: string;
+  title: string;
+  description: string | null;
+  distance_km: number | null;
+  route_coords: { latitude: number; longitude: number; timestamp?: number }[];
+  workout_id: string | null;
+  times_run: number;
+  created_at: string;
+  user?: { display_name: string | null; avatar_url: string | null };
+};
+
+export const savedRoutesApi = {
+  async getBySquad(squadId: string): Promise<SavedRoute[]> {
+    const db = await getClient();
+    const { data, error } = await db
+      .from("saved_routes")
+      .select("*, user:users(display_name, avatar_url)")
+      .eq("squad_id", squadId)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as SavedRoute[];
+  },
+
+  async save(payload: {
+    squadId: string;
+    savedBy: string;
+    title: string;
+    distanceKm: number | null;
+    routeCoords: { latitude: number; longitude: number; timestamp?: number }[];
+    workoutId: string | null;
+  }): Promise<SavedRoute> {
+    const db = await getClient();
+    const { data, error } = await db
+      .from("saved_routes")
+      .insert({
+        squad_id: payload.squadId,
+        saved_by: payload.savedBy,
+        title: payload.title,
+        distance_km: payload.distanceKm,
+        route_coords: payload.routeCoords,
+        workout_id: payload.workoutId,
+      })
+      .select("*, user:users(display_name, avatar_url)")
+      .single();
+    if (error) throw error;
+    return data as SavedRoute;
+  },
+
+  async incrementRuns(routeId: string): Promise<void> {
+    const db = await getClient();
+    await db.rpc("increment_route_runs", { route_id: routeId });
+  },
+
+  async remove(routeId: string): Promise<void> {
+    const db = await getClient();
+    const { error } = await db
+      .from("saved_routes")
+      .delete()
+      .eq("id", routeId);
+    if (error) throw error;
+  },
+};
+
+// ── Global Leaderboard ────────────────────────────────────────
+
+export type LeaderboardEntry = {
+  userId: string;
+  name: string;
+  avatarUrl: string | null;
+  totalDistanceKm: number;
+  totalWorkouts: number;
+  totalDurationMin: number;
+};
+
+export const globalLeaderboardApi = {
+  async get(period: "week" | "month" | "all"): Promise<LeaderboardEntry[]> {
+    const db = await getClient();
+    let query = db
+      .from("workouts")
+      .select(
+        "user_id, distance_km, duration_minutes, user:users!inner(id, display_name, avatar_url, show_in_leaderboards)",
+      );
+
+    if (period === "week") {
+      const start = new Date(
+        Date.now() - 7 * 24 * 60 * 60 * 1000,
+      ).toISOString();
+      query = query.gte("logged_at", start) as typeof query;
+    } else if (period === "month") {
+      const start = new Date(
+        Date.now() - 30 * 24 * 60 * 60 * 1000,
+      ).toISOString();
+      query = query.gte("logged_at", start) as typeof query;
+    }
+
+    const { data, error } = await query.limit(800);
+    if (error) throw error;
+
+    const byUser: Record<string, LeaderboardEntry> = {};
+    for (const w of data ?? []) {
+      const u = w.user as any;
+      if (!u || u.show_in_leaderboards === false) continue;
+      const uid = w.user_id as string;
+      if (!byUser[uid]) {
+        byUser[uid] = {
+          userId: uid,
+          name: u.display_name ?? "Runner",
+          avatarUrl: u.avatar_url ?? null,
+          totalDistanceKm: 0,
+          totalWorkouts: 0,
+          totalDurationMin: 0,
+        };
+      }
+      byUser[uid].totalDistanceKm += (w.distance_km as number) ?? 0;
+      byUser[uid].totalWorkouts += 1;
+      byUser[uid].totalDurationMin += (w.duration_minutes as number) ?? 0;
+    }
+
+    return Object.values(byUser);
+  },
+};
+
 // ── Storage ──────────────────────────────────────────────────
 
 export const storageApi = {

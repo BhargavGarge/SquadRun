@@ -24,6 +24,7 @@ import ActiveWorkoutScreen from "../screens/workout/ActiveWorkoutScreen";
 import WorkoutDetailScreen from "../screens/workout/WorkoutDetailScreen";
 import StatsScreen from "../screens/stats/StatsScreen";
 import SettingsScreen from "../screens/settings/SettingsScreen";
+import GlobalLeaderboardScreen from "../screens/leaderboard/GlobalLeaderboardScreen";
 
 const Root = createNativeStackNavigator();
 
@@ -145,6 +146,11 @@ export default function AppNavigator() {
             <Root.Screen
               name="Stats"
               component={StatsScreen}
+              options={{ animation: "slide_from_bottom" }}
+            />
+            <Root.Screen
+              name="GlobalLeaderboard"
+              component={GlobalLeaderboardScreen}
               options={{ animation: "slide_from_bottom" }}
             />
           </>

@@ -11,6 +11,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
   StatusBar,
   TextInput,
   Image,
@@ -24,7 +25,7 @@ import { formatDistanceToNow } from "date-fns";
 
 import { useTheme } from "../../contexts/ThemeContext";
 import { useAuthContext } from "../../contexts/AuthContext";
-import { workoutsApi, workoutSocialApi } from "../../services/supabase";
+import { workoutsApi, workoutSocialApi, savedRoutesApi } from "../../services/supabase";
 import { textStyles } from "../../theme/typography";
 import { spacing } from "../../theme/spacing";
 import GlassCard from "../../components/common/GlassCard";
@@ -61,6 +62,7 @@ export default function WorkoutDetailScreen() {
   const [socialLoading, setSocialLoading] = useState(true);
   const [commentText, setCommentText] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [routeSaved, setRouteSaved] = useState(false);
 
   const likeScale = useSharedValue(1);
   const likeAnimStyle = useAnimatedStyle(() => ({
@@ -203,6 +205,37 @@ export default function WorkoutDetailScreen() {
     }
   };
 
+  const handleSaveRoute = () => {
+    if (!workout?.route_coords || !workout.squad_id || !dbUser) return;
+    const defaultTitle = workout.title
+      ? `${workout.title} route`
+      : `${workout.type.charAt(0).toUpperCase() + workout.type.slice(1)} route`;
+
+    Alert.prompt(
+      "Save to Squad Routes",
+      "Give this route a name your squad will recognise.",
+      async (title: string | undefined) => {
+        if (!title?.trim()) return;
+        try {
+          await savedRoutesApi.save({
+            squadId: workout.squad_id!,
+            savedBy: dbUser.id,
+            title: title.trim(),
+            distanceKm: workout.distance_km ?? null,
+            routeCoords: workout.route_coords!,
+            workoutId: workout.id,
+          });
+          setRouteSaved(true);
+        } catch (err) {
+          console.error("[WorkoutDetail] Error saving route:", err);
+          Alert.alert("Error", "Could not save the route. Try again.");
+        }
+      },
+      "plain-text",
+      defaultTitle,
+    );
+  };
+
   if (isLoading) {
     return (
       <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
@@ -308,24 +341,66 @@ export default function WorkoutDetailScreen() {
                   title="Route"
                   height={300}
                 />
-                <TouchableOpacity
-                  style={[styles.playbackCTA, { backgroundColor: accentColor }]}
-                  onPress={() => setShowPlayback(!showPlayback)}
-                >
-                  <Ionicons
-                    name={showPlayback ? "pause" : "play"}
-                    size={18}
-                    color="#fff"
-                  />
-                  <Text
-                    style={[
-                      textStyles.labelMd,
-                      { color: "#fff", marginLeft: spacing[1] },
-                    ]}
+                <View style={{ flexDirection: "row", gap: spacing[2] }}>
+                  <TouchableOpacity
+                    style={[styles.playbackCTA, { backgroundColor: accentColor, flex: 1 }]}
+                    onPress={() => setShowPlayback(!showPlayback)}
                   >
-                    {showPlayback ? "Hide" : "Play"} Replay
-                  </Text>
-                </TouchableOpacity>
+                    <Ionicons
+                      name={showPlayback ? "pause" : "play"}
+                      size={18}
+                      color="#fff"
+                    />
+                    <Text
+                      style={[
+                        textStyles.labelMd,
+                        { color: "#fff", marginLeft: spacing[1] },
+                      ]}
+                    >
+                      {showPlayback ? "Hide" : "Play"} Replay
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Save to squad routes — only if workout belongs to a squad */}
+                  {workout.squad_id && (
+                    <TouchableOpacity
+                      style={[
+                        styles.playbackCTA,
+                        {
+                          backgroundColor: routeSaved
+                            ? theme.colors.surface_container
+                            : "transparent",
+                          borderWidth: 1,
+                          borderColor: routeSaved
+                            ? theme.colors.outline
+                            : theme.colors.primary,
+                          paddingHorizontal: spacing[3],
+                        },
+                      ]}
+                      onPress={routeSaved ? undefined : handleSaveRoute}
+                      disabled={routeSaved}
+                    >
+                      <Ionicons
+                        name={routeSaved ? "checkmark" : "bookmark-outline"}
+                        size={16}
+                        color={routeSaved ? theme.colors.on_surface_variant : theme.colors.primary}
+                      />
+                      <Text
+                        style={[
+                          textStyles.labelMd,
+                          {
+                            color: routeSaved
+                              ? theme.colors.on_surface_variant
+                              : theme.colors.primary,
+                            marginLeft: spacing[1],
+                          },
+                        ]}
+                      >
+                        {routeSaved ? "Saved" : "Save Route"}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
                 {showPlayback && (
                   <View style={{ height: 400, marginBottom: spacing[4] }}>
                     <RoutePlayback

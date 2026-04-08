@@ -79,4 +79,5 @@ export type RootStackParamList = {
   WorkoutDetail: { workoutId: string };
   Stats: undefined;
   Settings: undefined;
+  GlobalLeaderboard: undefined;
 };
