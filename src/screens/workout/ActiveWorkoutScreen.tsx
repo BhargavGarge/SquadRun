@@ -164,6 +164,7 @@ export default function ActiveWorkoutScreen() {
   const stepOffsetRef = useRef(0);
   const stepsRef = useRef(0);
   const lastBroadcastRef = useRef(0);
+  const headingRef = useRef<number | null>(null);
 
   const clearLiveLocation = useCallback(() => {
     if (!dbUser?.id || !squadId) return;
@@ -303,6 +304,11 @@ export default function ActiveWorkoutScreen() {
         }
         lastCoordRef.current = newCoord;
 
+        // Track heading for pace-alert direction inference
+        if (loc.coords.heading != null && loc.coords.heading >= 0) {
+          headingRef.current = loc.coords.heading;
+        }
+
         if (dbUser?.id && squadId) {
           const now = Date.now();
           if (now - lastBroadcastRef.current > 3000) {
@@ -422,6 +428,48 @@ export default function ActiveWorkoutScreen() {
     (theme.colors as any)[`workout_${type}`] ?? theme.colors.primary;
   const mapStyle = theme.isDark ? DARK_MAP_STYLE : [];
   const liveSquadCount = Object.keys(squadLocations).length;
+
+  // Pace alert — nearest squad member + direction relative to heading
+  const paceAlert = React.useMemo(() => {
+    if (!currentLocation || liveSquadCount === 0 || status !== "active") return null;
+
+    const alerts = Object.values(squadLocations)
+      .map((loc) => {
+        const distKm = haversineKm(
+          currentLocation.latitude,
+          currentLocation.longitude,
+          loc.lat,
+          loc.lon,
+        );
+        const distM = Math.round(distKm * 1000);
+        // Infer direction from heading
+        let direction: "ahead" | "behind" | null = null;
+        if (headingRef.current != null) {
+          const dLon = ((loc.lon - currentLocation.longitude) * Math.PI) / 180;
+          const y = Math.sin(dLon) * Math.cos((loc.lat * Math.PI) / 180);
+          const x =
+            Math.cos((currentLocation.latitude * Math.PI) / 180) *
+              Math.sin((loc.lat * Math.PI) / 180) -
+            Math.sin((currentLocation.latitude * Math.PI) / 180) *
+              Math.cos((loc.lat * Math.PI) / 180) *
+              Math.cos(dLon);
+          const bearing = ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+          const diff = Math.abs(((bearing - headingRef.current + 180) % 360) - 180);
+          direction = diff < 90 ? "ahead" : "behind";
+        }
+        return {
+          name: loc.user?.display_name ?? "Squadmate",
+          distM,
+          direction,
+          speedMps: loc.speed_mps,
+        };
+      })
+      .filter((a) => a.distM > 20); // ignore people right next to me
+
+    if (alerts.length === 0) return null;
+    // Show the furthest apart member — most actionable alert
+    return alerts.sort((a, b) => b.distM - a.distM)[0];
+  }, [currentLocation, squadLocations, status, liveSquadCount]);
 
   // ─────────────────────────────────────────────────────────────
   return (
@@ -576,6 +624,17 @@ export default function ActiveWorkoutScreen() {
               )}
             </View>
           </View>
+        )}
+
+        {/* Pace alert — shown when squadmate is >20m away during active run */}
+        {paceAlert && (
+          <PaceAlertBanner
+            name={paceAlert.name}
+            distM={paceAlert.distM}
+            direction={paceAlert.direction}
+            accentColor={accentColor}
+            theme={theme}
+          />
         )}
 
         {/* Primary stats */}
@@ -920,3 +979,57 @@ const styles = StyleSheet.create({
 const statStyles = StyleSheet.create({
   block: { alignItems: "flex-start" },
 });
+
+// ─── PaceAlertBanner ─────────────────────────────────────────
+
+function formatDistM(m: number): string {
+  return m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${m} m`;
+}
+
+function PaceAlertBanner({
+  name,
+  distM,
+  direction,
+  accentColor,
+  theme,
+}: {
+  name: string;
+  distM: number;
+  direction: "ahead" | "behind" | null;
+  accentColor: string;
+  theme: any;
+}) {
+  const dirLabel =
+    direction === "ahead" ? " ahead" : direction === "behind" ? " behind" : "";
+  const icon: any =
+    direction === "ahead"
+      ? "arrow-up-circle-outline"
+      : direction === "behind"
+        ? "arrow-down-circle-outline"
+        : "navigate-circle-outline";
+  const msg = `${name} is ${formatDistM(distM)}${dirLabel}`;
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "rgba(204,255,0,0.08)",
+        borderLeftWidth: 2,
+        borderLeftColor: accentColor,
+        paddingHorizontal: spacing[3],
+        paddingVertical: spacing[2],
+        marginBottom: spacing[3],
+        gap: spacing[2],
+      }}
+    >
+      <Ionicons name={icon} size={16} color={accentColor} />
+      <Text
+        style={[textStyles.labelSm, { color: theme.colors.on_surface, flex: 1 }]}
+        numberOfLines={1}
+      >
+        {msg}
+      </Text>
+    </View>
+  );
+}

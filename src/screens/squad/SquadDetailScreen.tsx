@@ -6,7 +6,7 @@
 //   • Quick-log CTA
 // ─────────────────────────────────────────────────────────────
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import {
   StatusBar,
   RefreshControl,
 } from "react-native";
+import * as Haptics from "expo-haptics";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -29,6 +30,7 @@ import MemberRow from "../../components/squad/MemberRow";
 import ActivityFeedItem from "../../components/squad/ActivityFeedItem";
 import GradientButton from "../../components/common/GradientButton";
 import Avatar from "../../components/common/Avatar";
+import MilestoneCelebration from "../../components/squad/MilestoneCelebration";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useAuthContext } from "../../contexts/AuthContext";
 import { useSquadStore } from "../../contexts/SquadContext";
@@ -36,6 +38,14 @@ import { textStyles } from "../../theme/typography";
 import { spacing, radius } from "../../theme/spacing";
 import { formatValue, getDaysLeft } from "../../utils/helpers";
 import { workoutsApi } from "../../services/supabase";
+import {
+  getCurrentWeekChallenges,
+  computeChallengeEntries,
+  getWeekNumber,
+} from "../../utils/challengeRotation";
+import { buildStreakInfos, shouldNudge } from "../../utils/streakUtils";
+import { savedRoutesApi, type SavedRoute } from "../../services/supabase";
+import RouteMapCard from "../../components/workout/RouteMapCard";
 import type { SquadMember } from "../../types";
 
 export default function SquadDetailScreen() {
@@ -58,8 +68,18 @@ export default function SquadDetailScreen() {
   );
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    "leaderboard" | "activity" | "challenges"
+    "leaderboard" | "activity" | "challenges" | "routes"
   >("leaderboard");
+  const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
+  const [routesLoading, setRoutesLoading] = useState(false);
+
+  // Milestone celebration
+  const [celebrationMilestone, setCelebrationMilestone] = useState<number | null>(null);
+  const celebratedRef = useRef<Set<number>>(new Set());
+  const lastGoalIdRef = useRef<string | null>(null);
+
+  // Rotating challenges — 3 per ISO week, cycles every 3 weeks
+  const weekChallenges = getCurrentWeekChallenges();
 
   useEffect(() => {
     if (activeSquad?.id !== squadId) {
@@ -73,6 +93,50 @@ export default function SquadDetailScreen() {
   useEffect(() => {
     if (activeGoal) loadContributions();
   }, [activeGoal?.id]);
+
+  useEffect(() => {
+    if (activeTab === "routes" && activeSquad?.id) loadRoutes();
+  }, [activeTab, activeSquad?.id]);
+
+  const loadRoutes = async () => {
+    if (!activeSquad) return;
+    setRoutesLoading(true);
+    try {
+      const routes = await savedRoutesApi.getBySquad(activeSquad.id);
+      setSavedRoutes(routes);
+    } catch (err) {
+      console.error("[SquadDetail] loadRoutes:", err);
+    } finally {
+      setRoutesLoading(false);
+    }
+  };
+
+  // Detect milestone crossings and trigger celebration
+  useEffect(() => {
+    if (!activeGoal) return;
+
+    // When goal changes, pre-mark milestones already passed so we don't
+    // retroactively celebrate on first load.
+    if (lastGoalIdRef.current !== activeGoal.id) {
+      lastGoalIdRef.current = activeGoal.id;
+      const already = new Set<number>();
+      for (const m of [25, 50, 75, 100]) {
+        if (goalProgress >= m) already.add(m);
+      }
+      celebratedRef.current = already;
+      return;
+    }
+
+    // Check each milestone in ascending order — show the lowest uncelebrated one
+    for (const milestone of [25, 50, 75, 100]) {
+      if (goalProgress >= milestone && !celebratedRef.current.has(milestone)) {
+        celebratedRef.current.add(milestone);
+        setCelebrationMilestone(milestone);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        break;
+      }
+    }
+  }, [goalProgress, activeGoal?.id]);
 
   const loadContributions = async () => {
     if (!activeGoal) return;
@@ -130,60 +194,19 @@ export default function SquadDetailScreen() {
     ? sortedMembers.findIndex((m) => m.user_id === dbUser?.id) + 1
     : null;
 
-  // Lightweight squad challenge stats derived from recent workouts (last 7 days)
+  // Weekly workouts slice — used by rotating challenge engine
   const now = new Date();
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const weeklyWorkouts = (workouts ?? []).filter((w) => {
     const logged = new Date(w.logged_at);
-    const inWindow = logged >= weekAgo && logged <= now;
-    const userVisible = w.user?.show_in_leaderboards ?? true;
-    return inWindow && userVisible;
+    return logged >= weekAgo && logged <= now && (w.user?.show_in_leaderboards ?? true);
   });
 
-  const challengeMap: Record<
-    string,
-    {
-      userId: string;
-      name: string;
-      avatarUrl: string | null;
-      distanceKm: number;
-      workoutsCount: number;
-      longestRunKm: number;
-    }
-  > = {};
-
-  for (const w of weeklyWorkouts) {
-    const userId = w.user_id;
-    const name = w.user?.display_name ?? "Squad member";
-    const avatarUrl = w.user?.avatar_url ?? null;
-    if (!challengeMap[userId]) {
-      challengeMap[userId] = {
-        userId,
-        name,
-        avatarUrl,
-        distanceKm: 0,
-        workoutsCount: 0,
-        longestRunKm: 0,
-      };
-    }
-    const stat = challengeMap[userId];
-    stat.workoutsCount += 1;
-    const dist = w.distance_km ?? 0;
-    if (dist > 0) {
-      stat.distanceKm += dist;
-      if (dist > stat.longestRunKm) stat.longestRunKm = dist;
-    }
-  }
-
-  const distanceWeekEntries = Object.values(challengeMap)
-    .filter((u) => u.distanceKm > 0)
-    .sort((a, b) => b.distanceKm - a.distanceKm);
-  const workoutsWeekEntries = Object.values(challengeMap)
-    .filter((u) => u.workoutsCount > 0)
-    .sort((a, b) => b.workoutsCount - a.workoutsCount);
-  const longestRunEntries = Object.values(challengeMap)
-    .filter((u) => u.longestRunKm > 0)
-    .sort((a, b) => b.longestRunKm - a.longestRunKm);
+  // Streak / accountability — uses full workouts slice (all loaded workouts, not just this week)
+  const streakInfos = buildStreakInfos(workouts ?? [], activeSquad?.members ?? []);
+  const myNudge =
+    dbUser?.id ? shouldNudge(dbUser.id, streakInfos) : false;
+  const myStreakInfo = streakInfos.find((s) => s.userId === dbUser?.id);
 
   if (!activeSquad) {
     return (
@@ -412,6 +435,43 @@ export default function SquadDetailScreen() {
             )}
           </View>
 
+          {/* ── Accountability nudge banner ───────────────────── */}
+          {myNudge && (
+            <View style={[styles.section, { paddingTop: 0 }]}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  backgroundColor: "rgba(255,107,53,0.10)",
+                  borderLeftWidth: 2,
+                  borderLeftColor: "#FF6B35",
+                  paddingHorizontal: spacing[3],
+                  paddingVertical: spacing[2.5],
+                  gap: spacing[2],
+                }}
+              >
+                <Ionicons name="warning-outline" size={16} color="#FF6B35" />
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={[textStyles.labelSm, { color: "#FF6B35" }]}
+                  >
+                    STREAK AT RISK
+                  </Text>
+                  <Text
+                    style={[
+                      textStyles.bodySm,
+                      { color: theme.colors.on_surface_variant, marginTop: 1 },
+                    ]}
+                  >
+                    {myStreakInfo?.daysSinceLast === 1
+                      ? "You haven't logged today — squad is active."
+                      : `No workout in ${myStreakInfo?.daysSinceLast ?? 2}+ days — squad is still running.`}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
+
           {/* ── Quick log button ──────────────────────────────── */}
           <View style={[styles.section, { paddingTop: 0 }]}>
             <GradientButton
@@ -430,7 +490,7 @@ export default function SquadDetailScreen() {
 
           {/* ── Tabs — tonal separation, no border line ──────── */}
           <View style={styles.tabs}>
-            {(["leaderboard", "activity", "challenges"] as const).map((tab) => (
+            {(["leaderboard", "activity", "challenges", "routes"] as const).map((tab) => (
               <TouchableOpacity
                 key={tab}
                 style={[
@@ -465,10 +525,12 @@ export default function SquadDetailScreen() {
                   ]}
                 >
                   {tab === "leaderboard"
-                    ? "LEADERBOARD"
+                    ? "BOARD"
                     : tab === "activity"
-                      ? "ACTIVITY"
-                      : "CHALLENGES"}
+                      ? "FEED"
+                      : tab === "challenges"
+                        ? "CHALLENGES"
+                        : "ROUTES"}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -540,6 +602,132 @@ export default function SquadDetailScreen() {
                   animationDelay={i * 80}
                 />
               ))}
+
+              {/* ── Streak status ──────────────────────────── */}
+              {streakInfos.length > 0 && (
+                <View style={{ marginTop: spacing[5] }}>
+                  <Text
+                    style={[
+                      textStyles.labelMd,
+                      {
+                        color: theme.colors.on_surface_variant,
+                        marginBottom: spacing[3],
+                      },
+                    ]}
+                  >
+                    STREAKS
+                  </Text>
+                  {streakInfos.map((info) => {
+                    const statusColor = info.isAtRisk
+                      ? "#FF6B35"
+                      : info.isActiveToday
+                        ? theme.colors.primary
+                        : theme.colors.on_surface_variant;
+                    const statusIcon: any = info.isAtRisk
+                      ? "warning-outline"
+                      : info.isActiveToday
+                        ? "checkmark-circle-outline"
+                        : "ellipse-outline";
+                    const statusText = info.isAtRisk
+                      ? `${info.daysSinceLast}d inactive`
+                      : info.isActiveToday
+                        ? "Active today"
+                        : "No workout today";
+
+                    return (
+                      <View
+                        key={info.userId}
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          paddingVertical: spacing[2],
+                          borderBottomWidth: 1,
+                          borderBottomColor: theme.colors.outline + "30",
+                        }}
+                      >
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: spacing[2],
+                            flex: 1,
+                          }}
+                        >
+                          <Avatar
+                            uri={info.avatarUrl}
+                            name={info.name}
+                            size={30}
+                          />
+                          <Text
+                            style={[
+                              textStyles.bodyMd,
+                              { color: theme.colors.on_surface },
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {info.name}
+                          </Text>
+                        </View>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: spacing[3],
+                          }}
+                        >
+                          {/* Streak count */}
+                          {info.streak > 0 && (
+                            <View
+                              style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                gap: spacing[1],
+                              }}
+                            >
+                              <Ionicons
+                                name="flame"
+                                size={13}
+                                color={theme.colors.primary}
+                              />
+                              <Text
+                                style={[
+                                  textStyles.labelSm,
+                                  { color: theme.colors.primary },
+                                ]}
+                              >
+                                {info.streak}d
+                              </Text>
+                            </View>
+                          )}
+                          {/* Status */}
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: spacing[1],
+                            }}
+                          >
+                            <Ionicons
+                              name={statusIcon}
+                              size={13}
+                              color={statusColor}
+                            />
+                            <Text
+                              style={[
+                                textStyles.labelSm,
+                                { color: statusColor },
+                              ]}
+                            >
+                              {statusText}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
             </View>
           )}
 
@@ -576,71 +764,224 @@ export default function SquadDetailScreen() {
             </View>
           )}
 
-          {/* ── Squad challenges (derived from recent workouts) ─ */}
+          {/* ── Squad challenges (rotating — 3 per ISO week) ── */}
           {activeTab === "challenges" && (
             <View style={styles.section}>
-              <Text
-                style={[
-                  textStyles.labelMd,
-                  {
-                    color: theme.colors.on_surface_variant,
-                    marginBottom: spacing[3],
-                  },
-                ]}
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "baseline",
+                  justifyContent: "space-between",
+                  marginBottom: spacing[3],
+                }}
               >
-                THIS WEEK'S SQUAD CHALLENGES
-              </Text>
+                <Text
+                  style={[
+                    textStyles.labelMd,
+                    { color: theme.colors.on_surface_variant },
+                  ]}
+                >
+                  THIS WEEK'S CHALLENGES
+                </Text>
+                <Text
+                  style={[
+                    textStyles.labelSm,
+                    { color: theme.colors.primary_light },
+                  ]}
+                >
+                  WK {getWeekNumber()}
+                </Text>
+              </View>
 
-              <ChallengeCard
-                title="Most distance"
-                subtitle="Total km logged in the last 7 days"
-                unit="km"
-                precision={1}
-                entries={distanceWeekEntries.map((u) => ({
-                  userId: u.userId,
-                  name: u.name,
-                  avatarUrl: u.avatarUrl,
-                  value: u.distanceKm,
-                }))}
-                highlightUserId={dbUser?.id ?? null}
-                theme={theme}
-              />
+              {weekChallenges.map((def, idx) => (
+                <ChallengeCard
+                  key={def.id}
+                  title={def.title}
+                  subtitle={def.subtitle}
+                  unit={def.unit}
+                  precision={def.precision}
+                  icon={def.icon}
+                  entries={computeChallengeEntries(weeklyWorkouts, def.id)}
+                  highlightUserId={dbUser?.id ?? null}
+                  theme={theme}
+                  style={idx > 0 ? { marginTop: spacing[3] } : undefined}
+                />
+              ))}
+            </View>
+          )}
 
-              <ChallengeCard
-                title="Most workouts"
-                subtitle="Completed sessions in the last 7 days"
-                unit="sessions"
-                precision={0}
-                entries={workoutsWeekEntries.map((u) => ({
-                  userId: u.userId,
-                  name: u.name,
-                  avatarUrl: u.avatarUrl,
-                  value: u.workoutsCount,
-                }))}
-                highlightUserId={dbUser?.id ?? null}
-                theme={theme}
-                style={{ marginTop: spacing[3] }}
-              />
+          {/* ── Route Sharing Queue ───────────────────────────── */}
+          {activeTab === "routes" && (
+            <View style={styles.section}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: spacing[3],
+                }}
+              >
+                <Text
+                  style={[
+                    textStyles.labelMd,
+                    { color: theme.colors.on_surface_variant },
+                  ]}
+                >
+                  SQUAD ROUTES
+                </Text>
+                <Text
+                  style={[
+                    textStyles.labelSm,
+                    { color: theme.colors.on_surface_variant },
+                  ]}
+                >
+                  Save routes from a workout detail
+                </Text>
+              </View>
 
-              <ChallengeCard
-                title="Longest single run"
-                subtitle="Best one-off distance in the last 7 days"
-                unit="km"
-                precision={2}
-                entries={longestRunEntries.map((u) => ({
-                  userId: u.userId,
-                  name: u.name,
-                  avatarUrl: u.avatarUrl,
-                  value: u.longestRunKm,
-                }))}
-                highlightUserId={dbUser?.id ?? null}
-                theme={theme}
-                style={{ marginTop: spacing[3] }}
-              />
+              {routesLoading ? (
+                <View style={{ paddingVertical: spacing[8], alignItems: "center" }}>
+                  <Text
+                    style={[textStyles.bodySm, { color: theme.colors.on_surface_variant }]}
+                  >
+                    Loading…
+                  </Text>
+                </View>
+              ) : savedRoutes.length === 0 ? (
+                <GlassCard style={{ alignItems: "center", paddingVertical: spacing[8] }}>
+                  <Ionicons
+                    name="map-outline"
+                    size={36}
+                    color={theme.colors.on_surface_variant}
+                  />
+                  <Text
+                    style={[
+                      textStyles.titleMd,
+                      { color: theme.colors.on_surface, marginTop: spacing[3] },
+                    ]}
+                  >
+                    No saved routes yet
+                  </Text>
+                  <Text
+                    style={[
+                      textStyles.bodySm,
+                      {
+                        color: theme.colors.on_surface_variant,
+                        marginTop: spacing[1],
+                        textAlign: "center",
+                      },
+                    ]}
+                  >
+                    Open a workout with a route and tap{"\n"}"Save to Squad Routes"
+                  </Text>
+                </GlassCard>
+              ) : (
+                savedRoutes.map((route) => (
+                  <GlassCard
+                    key={route.id}
+                    elevated
+                    style={{ marginBottom: spacing[3], overflow: "hidden", padding: 0 }}
+                  >
+                    {/* Map thumbnail */}
+                    {route.route_coords && route.route_coords.length > 1 && (
+                      <RouteMapCard
+                        coords={route.route_coords}
+                        strokeColor={theme.colors.primary}
+                        height={140}
+                        borderRadius={0}
+                      />
+                    )}
+
+                    <View style={{ padding: spacing[3] }}>
+                      {/* Title + distance */}
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <Text
+                          style={[
+                            textStyles.titleMd,
+                            { color: theme.colors.on_surface, flex: 1 },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {route.title}
+                        </Text>
+                        {route.distance_km != null && (
+                          <Text
+                            style={[
+                              textStyles.labelSm,
+                              { color: theme.colors.primary_light },
+                            ]}
+                          >
+                            {route.distance_km.toFixed(1)} km
+                          </Text>
+                        )}
+                      </View>
+
+                      {/* Saved by + times run */}
+                      <Text
+                        style={[
+                          textStyles.bodySm,
+                          { color: theme.colors.on_surface_variant, marginTop: 2 },
+                        ]}
+                      >
+                        Saved by {route.user?.display_name ?? "Squad member"}
+                        {route.times_run > 0
+                          ? ` · ${route.times_run} run${route.times_run !== 1 ? "s" : ""}`
+                          : ""}
+                      </Text>
+
+                      {/* Run this button */}
+                      <TouchableOpacity
+                        style={[
+                          {
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: spacing[2],
+                            marginTop: spacing[3],
+                            paddingVertical: spacing[2.5],
+                            backgroundColor: theme.colors.primary,
+                          },
+                        ]}
+                        onPress={async () => {
+                          // Increment run count (fire-and-forget)
+                          savedRoutesApi.incrementRuns(route.id).catch(() => {});
+                          navigation.navigate("ActiveWorkout", {
+                            type: "run",
+                            squadId: activeSquad.id,
+                            goalId: activeGoal?.id,
+                          });
+                        }}
+                      >
+                        <Ionicons name="play" size={14} color="#0A1400" />
+                        <Text
+                          style={[textStyles.labelMd, { color: "#0A1400" }]}
+                        >
+                          Run This Route
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </GlassCard>
+                ))
+              )}
             </View>
           )}
         </ScrollView>
       </SafeAreaView>
+
+      {/* Milestone celebration overlay */}
+      {celebrationMilestone !== null && (
+        <MilestoneCelebration
+          milestone={celebrationMilestone}
+          goalTitle={activeGoal?.title}
+          onDismiss={() => setCelebrationMilestone(null)}
+        />
+      )}
     </View>
   );
 }
@@ -718,6 +1059,7 @@ const styles = StyleSheet.create({
   },
 });
 
+// ChallengeEntry type re-exported from challengeRotation — just alias here
 type ChallengeEntry = {
   userId: string;
   name: string;
@@ -730,6 +1072,7 @@ function ChallengeCard({
   subtitle,
   unit,
   precision,
+  icon,
   entries,
   highlightUserId,
   theme,
@@ -739,6 +1082,7 @@ function ChallengeCard({
   subtitle: string;
   unit: string;
   precision: number;
+  icon: string;
   entries: ChallengeEntry[];
   highlightUserId: string | null;
   theme: any;
@@ -765,11 +1109,14 @@ function ChallengeCard({
         }}
       >
         <View style={{ flex: 1 }}>
-          <Text
-            style={[textStyles.labelSm, { color: theme.colors.primary_light }]}
-          >
-            {title}
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing[1.5] }}>
+            <Ionicons name={icon as any} size={13} color={theme.colors.primary_light} />
+            <Text
+              style={[textStyles.labelSm, { color: theme.colors.primary_light }]}
+            >
+              {title}
+            </Text>
+          </View>
           <Text
             style={[
               textStyles.bodySm,

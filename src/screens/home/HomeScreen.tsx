@@ -504,6 +504,19 @@ export default function HomeScreen() {
                   onPress={() => setShowFilterModal(true)}
                 />
                 <Pressable
+                  onPress={() => navigation.navigate("GlobalLeaderboard")}
+                  style={[
+                    styles.statsBtn,
+                    { backgroundColor: theme.colors.surface_container },
+                  ]}
+                >
+                  <Ionicons
+                    name="trophy-outline"
+                    size={18}
+                    color={theme.colors.on_surface}
+                  />
+                </Pressable>
+                <Pressable
                   onPress={() => navigation.navigate("Stats")}
                   style={[
                     styles.statsBtn,
