@@ -13,11 +13,13 @@ import {
   Platform,
   TouchableOpacity,
   StatusBar,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -33,7 +35,12 @@ import RouteMapCard from "../../components/workout/RouteMapCard";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useAuthContext } from "../../contexts/AuthContext";
 import { useSquadStore } from "../../contexts/SquadContext";
-import { workoutsApi, activityApi, notifySquadMembers } from "../../services/supabase";
+import {
+  workoutsApi,
+  activityApi,
+  notifySquadMembers,
+  storageApi,
+} from "../../services/supabase";
 import { sendLocalNotification } from "../../services/notifications";
 import { textStyles } from "../../theme/typography";
 import { spacing, radius } from "../../theme/spacing";
@@ -71,26 +78,33 @@ export default function LogWorkoutScreen() {
   const resolvedGoalId = goalId ?? activeGoal?.id ?? null;
 
   // prefill comes from ActiveWorkoutScreen after a GPS-tracked session
-  const prefillData: {
-    type?: WorkoutType;
-    distance_km?: number;
-    duration_minutes?: number;
-    steps?: number;
-    route_coords?: RouteCoord[];
-  } | undefined = prefill;
+  const prefillData:
+    | {
+        type?: WorkoutType;
+        distance_km?: number;
+        duration_minutes?: number;
+        steps?: number;
+        route_coords?: RouteCoord[];
+      }
+    | undefined = prefill;
 
-  const [type, setType] = useState<WorkoutType>(prefillData?.type ?? "run");
+  const initialType: WorkoutType =
+    prefillData?.type ?? dbUser?.default_workout_type ?? "run";
+  const [type, setType] = useState<WorkoutType>(initialType);
   const [title, setTitle] = useState("");
   const [distance, setDistance] = useState(
-    prefillData?.distance_km != null ? String(prefillData.distance_km) : ""
+    prefillData?.distance_km != null ? String(prefillData.distance_km) : "",
   );
   const [duration, setDuration] = useState(
-    prefillData?.duration_minutes != null ? String(prefillData.duration_minutes) : ""
+    prefillData?.duration_minutes != null
+      ? String(prefillData.duration_minutes)
+      : "",
   );
   const [calories, setCalories] = useState("");
   const [steps] = useState(prefillData?.steps ?? 0);
   const [routeCoords] = useState<RouteCoord[]>(prefillData?.route_coords ?? []);
   const [notes, setNotes] = useState("");
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -101,11 +115,35 @@ export default function LogWorkoutScreen() {
     opacity: celebrationScale.value,
   }));
 
+  const handlePickPhoto = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setPhotoUri(result.assets[0].uri);
+    }
+  };
+
   const handleLog = async () => {
     if (!dbUser) return;
     setLoading(true);
 
     try {
+      let photoUrl: string | null = null;
+      if (photoUri && dbUser.clerk_id) {
+        photoUrl = await storageApi.uploadWorkoutPhoto(
+          dbUser.clerk_id,
+          photoUri,
+        );
+      }
+
       const workout = await workoutsApi.log({
         user_id: dbUser.id,
         squad_id: resolvedSquadId,
@@ -115,14 +153,15 @@ export default function LogWorkoutScreen() {
         distance_km: distance ? parseFloat(distance) : null,
         duration_minutes: duration ? parseFloat(duration) : null,
         calories: calories ? parseFloat(calories) : null,
+        photo_url: photoUrl,
         steps: steps || null,
         route_coords: routeCoords.length >= 2 ? routeCoords : null,
         notes: notes.trim() || null,
         logged_at: new Date().toISOString(),
       });
 
-      // Post to activity feed if squad is set
-      if (resolvedSquadId) {
+      // Post to activity feed if squad is set and user opted in
+      if (resolvedSquadId && (dbUser.share_workouts_to_squad ?? true)) {
         await activityApi.insert({
           squad_id: resolvedSquadId,
           user_id: dbUser.id,
@@ -133,6 +172,7 @@ export default function LogWorkoutScreen() {
             distance_km: workout.distance_km,
             duration_minutes: workout.duration_minutes,
             steps: workout.steps,
+            photo_url: workout.photo_url,
             route_coords: workout.route_coords,
           },
         });
@@ -143,12 +183,12 @@ export default function LogWorkoutScreen() {
         // Notify squad members in-app (DB insert) + local push for foreground
         const typeInfo = WORKOUT_TYPES.find((t) => t.type === type);
         const notifTitle = "Workout logged!";
-        const notifBody  = `${dbUser.display_name} just logged a ${typeInfo?.label.toLowerCase() ?? type}`;
+        const notifBody = `${dbUser.display_name} just logged a ${typeInfo?.label.toLowerCase() ?? type}`;
         // Fire-and-forget — don't block the save flow
         notifySquadMembers(
           resolvedSquadId,
           dbUser.id,
-          'workout_logged',
+          "workout_logged",
           notifTitle,
           notifBody,
           { workout_id: workout.id, squad_id: resolvedSquadId },
@@ -367,6 +407,91 @@ export default function LogWorkoutScreen() {
               </View>
             )}
 
+            {/* Photo upload */}
+            <View style={styles.section}>
+              <Text
+                style={[
+                  textStyles.labelMd,
+                  {
+                    color: theme.colors.on_surface_variant,
+                    marginBottom: spacing[3],
+                  },
+                ]}
+              >
+                Activity Photo (optional)
+              </Text>
+              {photoUri ? (
+                <GlassCard padding={0} style={styles.photoCard}>
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    onPress={handlePickPhoto}
+                  >
+                    <Image
+                      source={{ uri: photoUri }}
+                      style={styles.photoPreview}
+                    />
+                    <View style={styles.photoOverlay}>
+                      <View style={styles.photoOverlayChip}>
+                        <Ionicons
+                          name="camera-reverse-outline"
+                          size={16}
+                          color="#fff"
+                        />
+                        <Text
+                          style={[
+                            textStyles.labelSm,
+                            { color: "#fff", marginLeft: 6 },
+                          ]}
+                        >
+                          Change photo
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                </GlassCard>
+              ) : (
+                <TouchableOpacity onPress={handlePickPhoto}>
+                  <GlassCard
+                    padding={spacing[3]}
+                    style={styles.photoPickerCard}
+                  >
+                    <View style={styles.photoPickerInner}>
+                      <View
+                        style={[
+                          styles.photoIconCircle,
+                          { backgroundColor: `${accentColor}1A` },
+                        ]}
+                      >
+                        <Ionicons
+                          name="camera-outline"
+                          size={20}
+                          color={accentColor}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={[
+                            textStyles.bodyMd,
+                            { color: theme.colors.on_surface },
+                          ]}
+                        >
+                          Add activity photo
+                        </Text>
+                        <Text
+                          style={[
+                            textStyles.bodySm,
+                            { color: theme.colors.on_surface_variant },
+                          ]}
+                        >
+                          Attach one image to this workout
+                        </Text>
+                      </View>
+                    </View>
+                  </GlassCard>
+                </TouchableOpacity>
+              )}
+            </View>
+
             {/* Notes */}
             <View style={styles.section}>
               <Input
@@ -491,6 +616,42 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: "row",
     gap: spacing[3],
+  },
+  photoCard: {
+    borderRadius: radius.lg,
+    overflow: "hidden",
+  },
+  photoPreview: {
+    width: "100%",
+    height: 200,
+  },
+  photoOverlay: {
+    position: "absolute",
+    bottom: spacing[2],
+    right: spacing[2],
+  },
+  photoOverlayChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[1],
+    borderRadius: radius.full,
+    backgroundColor: "#00000099",
+  },
+  photoPickerCard: {
+    borderRadius: radius.lg,
+  },
+  photoPickerInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[3],
+  },
+  photoIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
   },
   celebration: {
     alignItems: "center",
